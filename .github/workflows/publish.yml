@@ -29,6 +29,7 @@ jobs:
         run: |
           devenv up &
           until curl -sf http://localhost:5984/ > /dev/null 2>&1; do sleep 1; done
+          curl -sf -X PUT http://localhost:5984/_global_changes -u admin:admin > /dev/null
           yarn install --immutable
           yarn effect-tsgo patch
           yarn check
