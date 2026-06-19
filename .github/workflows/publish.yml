@@ -12,23 +12,24 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: cachix/install-nix-action@v31
+
+      - uses: cachix/cachix-action@v16
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          name: devenv
 
-      - run: corepack enable
+      - run: nix profile add nixpkgs#devenv
 
-      - run: yarn install --immutable
+      - name: Check and test
+        shell: devenv shell bash -- -e {0}
+        run: |
+          yarn install --immutable
+          yarn effect-tsgo patch
+          yarn check
+          yarn test
 
-      - run: yarn effect-tsgo patch
-
-      - run: yarn check
-
-      - run: yarn test
-
-      - run: yarn build
-
-      - run: yarn workspaces foreach -At --no-private exec sh -c 'yarn pack -o package.tgz && npm publish package.tgz --provenance --access public'
+      - name: Publish
+        shell: devenv shell bash -- -e {0}
+        run: yarn release
