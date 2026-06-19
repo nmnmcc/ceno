@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["Neno"]
+  "cSpell.words": ["couchdb", "ceno", "Ceno"],
+  "js/ts.tsdk.path": "node_modules/typescript/lib"
 }

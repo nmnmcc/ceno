@@ -97,18 +97,29 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@better-doc/neno@workspace:.":
+"@ceno/core@workspace:^, @ceno/core@workspace:packages/core":
   version: 0.0.0-use.local
-  resolution: "@better-doc/neno@workspace:."
+  resolution: "@ceno/core@workspace:packages/core"
+  peerDependencies:
+    effect: ^4.0.0-beta.84
+  languageName: unknown
+  linkType: soft
+
+"@ceno/couchdb@workspace:packages/couchdb":
+  version: 0.0.0-use.local
+  resolution: "@ceno/couchdb@workspace:packages/couchdb"
   dependencies:
-    "@effect/language-service": "npm:^0.86.2"
-    "@effect/tsgo": "npm:^0.14.5"
-    "@ianvs/prettier-plugin-sort-imports": "npm:^4.7.1"
-    "@types/node": "npm:24"
-    "@typescript/native-preview": "npm:^7.0.0-dev.20260618.1"
-    effect: "npm:^4.0.0-beta.84"
-    prettier: "npm:^3.8.4"
-    typescript: "npm:^6.0.3"
+    "@ceno/core": "workspace:^"
+  peerDependencies:
+    effect: ^4.0.0-beta.84
+  languageName: unknown
+  linkType: soft
+
+"@ceno/version@workspace:packages/version":
+  version: 0.0.0-use.local
+  resolution: "@ceno/version@workspace:packages/version"
+  peerDependencies:
+    effect: ^4.0.0-beta.84
   languageName: unknown
   linkType: soft
 
@@ -702,6 +713,21 @@ __metadata:
   checksum: 10c0/6414bbc1c6f45fb774173431c7205e79783b77cfae0e2145e741b6999363554dbd2f4210d2a5bc08683e0b2f6823198c9308766b1d0911e1dccd7beb8842f860
   languageName: node
   linkType: hard
+
+"root-workspace-0b6124@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "root-workspace-0b6124@workspace:."
+  dependencies:
+    "@effect/language-service": "npm:^0.86.2"
+    "@effect/tsgo": "npm:^0.14.5"
+    "@ianvs/prettier-plugin-sort-imports": "npm:^4.7.1"
+    "@types/node": "npm:24"
+    "@typescript/native-preview": "npm:^7.0.0-dev.20260618.1"
+    effect: "npm:^4.0.0-beta.84"
+    prettier: "npm:^3.8.4"
+    typescript: "npm:^6.0.3"
+  languageName: unknown
+  linkType: soft
 
 "semver@npm:^7.3.5, semver@npm:^7.5.2":
   version: 7.8.4

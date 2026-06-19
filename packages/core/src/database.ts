@@ -1,16 +1,17 @@
-import { Schema } from "effect";
-import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi";
+import { Context, Schema, type Effect, type Stream } from "effect";
+import type { HttpClientError } from "effect/unstable/http";
 
-import {
-  NenoAlreadyExistsWire,
-  NenoBadContentTypeWire,
-  NenoBadRequestWire,
-  NenoForbiddenWire,
-  NenoIllegalDatabaseNameWire,
-  NenoInternalServerErrorWire,
-  NenoNotFoundWire,
-  NenoUnauthorizedWire,
-} from "./errors.js";
+import type {
+  CenoAlreadyExists,
+  CenoBadContentType,
+  CenoBadRequest,
+  CenoForbidden,
+  CenoIllegalDatabaseName,
+  CenoInternalServerError,
+  CenoNotFound,
+  CenoUnauthorized,
+  TransportError,
+} from "./errors";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -18,11 +19,13 @@ import {
 
 /** Generic `{"ok": true}` response. */
 export const OkResponse = Schema.Struct({ ok: Schema.Boolean });
+export type OkResponse = typeof OkResponse.Type;
 
 /** Response from `PUT /{db}` (create database). */
 export const DatabaseCreateResponse = Schema.Struct({
   ok: Schema.Boolean,
 });
+export type DatabaseCreateResponse = typeof DatabaseCreateResponse.Type;
 
 /** Database metadata from `GET /{db}`. */
 export const DatabaseGetResponse = Schema.Struct({
@@ -42,6 +45,7 @@ export const DatabaseGetResponse = Schema.Struct({
   }),
   update_seq: Schema.Union([Schema.Number, Schema.String]),
 });
+export type DatabaseGetResponse = typeof DatabaseGetResponse.Type;
 
 /** Single entry from `GET /{db}/_changes`. */
 export const DatabaseChangesResultItem = Schema.Struct({
@@ -50,6 +54,7 @@ export const DatabaseChangesResultItem = Schema.Struct({
   seq: Schema.Unknown,
   deleted: Schema.optional(Schema.Boolean),
 });
+export type DatabaseChangesResultItem = typeof DatabaseChangesResultItem.Type;
 
 /** Changes feed response. */
 export const DatabaseChangesResponse = Schema.Struct({
@@ -57,6 +62,7 @@ export const DatabaseChangesResponse = Schema.Struct({
   pending: Schema.Number,
   results: Schema.Array(DatabaseChangesResultItem),
 });
+export type DatabaseChangesResponse = typeof DatabaseChangesResponse.Type;
 
 /** Single event from `GET /_db_updates`. */
 const DatabaseUpdatesResultItem = Schema.Struct({
@@ -70,6 +76,7 @@ export const DatabaseUpdatesResponse = Schema.Struct({
   results: Schema.Array(DatabaseUpdatesResultItem),
   last_seq: Schema.String,
 });
+export type DatabaseUpdatesResponse = typeof DatabaseUpdatesResponse.Type;
 
 /** Replication history entry. */
 const DatabaseReplicationHistoryItem = Schema.Struct({
@@ -94,6 +101,7 @@ export const DatabaseReplicateResponse = Schema.Struct({
   session_id: Schema.String,
   source_last_seq: Schema.Number,
 });
+export type DatabaseReplicateResponse = typeof DatabaseReplicateResponse.Type;
 
 // ---------------------------------------------------------------------------
 // Parameter Types
@@ -145,85 +153,61 @@ export interface UpdatesParams {
 }
 
 // ---------------------------------------------------------------------------
-// API Group
+// Service
 // ---------------------------------------------------------------------------
 
-/** Database management endpoints. */
-export const DatabaseApi = HttpApiGroup.make("database")
-  .add(
-    HttpApiEndpoint.put("create", "/:name", {
-      params: Schema.Struct({ name: Schema.String }),
-      query: Schema.Struct({
-        n: Schema.optional(Schema.NumberFromString),
-        q: Schema.optional(Schema.NumberFromString),
-        partitioned: Schema.optional(Schema.Boolean),
-      }),
-      success: DatabaseCreateResponse,
-      error: [NenoIllegalDatabaseNameWire, NenoUnauthorizedWire, NenoForbiddenWire, NenoAlreadyExistsWire],
-    }),
-  )
-  .add(
-    HttpApiEndpoint.get("get", "/:name", {
-      params: Schema.Struct({ name: Schema.String }),
-      success: DatabaseGetResponse,
-      error: [NenoUnauthorizedWire, NenoForbiddenWire, NenoNotFoundWire],
-    }),
-  )
-  .add(
-    HttpApiEndpoint["delete"]("destroy", "/:name", {
-      params: Schema.Struct({ name: Schema.String }),
-      success: OkResponse,
-      error: [NenoBadRequestWire, NenoUnauthorizedWire, NenoForbiddenWire, NenoNotFoundWire],
-    }),
-  )
-  .add(
-    HttpApiEndpoint.get("list", "/_all_dbs", {
-      success: Schema.Array(Schema.String),
-      error: [NenoUnauthorizedWire, NenoForbiddenWire],
-    }),
-  )
-  .add(
-    HttpApiEndpoint.post("compact", "/:name/_compact/:ddoc?", {
-      params: Schema.Struct({
-        name: Schema.String,
-        ddoc: Schema.optional(Schema.String),
-      }),
-      success: OkResponse,
-      error: [NenoBadRequestWire, NenoUnauthorizedWire, NenoForbiddenWire, NenoNotFoundWire, NenoBadContentTypeWire],
-    }),
-  )
-  .add(
-    HttpApiEndpoint.post("replicate", "/_replicate", {
-      payload: Schema.Unknown,
-      success: DatabaseReplicateResponse,
-      error: [
-        NenoBadRequestWire,
-        NenoUnauthorizedWire,
-        NenoForbiddenWire,
-        NenoNotFoundWire,
-        NenoInternalServerErrorWire,
-      ],
-    }),
-  )
-  .add(
-    HttpApiEndpoint.get("changes", "/:name/_changes", {
-      params: Schema.Struct({ name: Schema.String }),
-      query: Schema.Unknown,
-      success: DatabaseChangesResponse,
-      error: [NenoBadRequestWire, NenoUnauthorizedWire, NenoForbiddenWire],
-    }),
-  )
-  .add(
-    HttpApiEndpoint.get("changesStream", "/:name/_changes", {
-      params: Schema.Struct({ name: Schema.String }),
-      query: Schema.Unknown,
-      success: HttpApiSchema.StreamUint8Array(),
-    }),
-  )
-  .add(
-    HttpApiEndpoint.get("updates", "/_db_updates", {
-      query: Schema.Unknown,
-      success: DatabaseUpdatesResponse,
-      error: [NenoUnauthorizedWire, NenoForbiddenWire],
-    }),
-  );
+/** CouchDB database management operations (create, delete, compact, replicate, changes). */
+export class Database extends Context.Service<Database, Database.Database>()("@ceno/core/Database") {}
+
+export namespace Database {
+  /** Service shape for database management operations. */
+  export interface Database {
+    /** Creates a new database. */
+    readonly create: (
+      name: string,
+      options?: DatabaseCreateParams,
+    ) => Effect.Effect<
+      DatabaseCreateResponse,
+      CenoIllegalDatabaseName | CenoUnauthorized | CenoForbidden | CenoAlreadyExists | TransportError
+    >;
+    /** Retrieves database metadata. */
+    readonly get: (
+      name: string,
+    ) => Effect.Effect<DatabaseGetResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
+    /** Deletes a database. */
+    readonly destroy: (
+      name: string,
+    ) => Effect.Effect<OkResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
+    /** Lists all database names. */
+    readonly list: Effect.Effect<readonly string[], CenoUnauthorized | CenoForbidden | TransportError>;
+    /** Triggers compaction on a database or design document. */
+    readonly compact: (
+      name: string,
+      ddoc?: string,
+    ) => Effect.Effect<
+      OkResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoBadContentType | TransportError
+    >;
+    /** Starts a replication between two databases. */
+    readonly replicate: (
+      options: DatabaseReplicateOptions,
+    ) => Effect.Effect<
+      DatabaseReplicateResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+    >;
+    /** Retrieves the changes feed for a database. */
+    readonly changes: (
+      name: string,
+      options?: DatabaseChangesParams,
+    ) => Effect.Effect<DatabaseChangesResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+    /** Streams raw change events as bytes (NDJSON). */
+    readonly changesStream: (
+      name: string,
+      options?: DatabaseChangesParams,
+    ) => Effect.Effect<Stream.Stream<Uint8Array, HttpClientError.HttpClientError>, TransportError>;
+    /** Retrieves global database update events. */
+    readonly updates: (
+      options?: UpdatesParams,
+    ) => Effect.Effect<DatabaseUpdatesResponse, CenoUnauthorized | CenoForbidden | TransportError>;
+  }
+}

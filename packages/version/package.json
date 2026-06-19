@@ -1,0 +1,7 @@
+{
+  "name": "@ceno/version",
+  "type": "module",
+  "peerDependencies": {
+    "effect": "^4.0.0-beta.84"
+  }
+}
