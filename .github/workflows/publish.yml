@@ -1,0 +1,34 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - run: corepack enable
+
+      - run: yarn install --immutable
+
+      - run: yarn effect-tsgo patch
+
+      - run: yarn check
+
+      - run: yarn test
+
+      - run: yarn build
+
+      - run: yarn workspaces foreach -At --no-private exec sh -c 'yarn pack -o package.tgz && npm publish package.tgz --provenance --access public'
