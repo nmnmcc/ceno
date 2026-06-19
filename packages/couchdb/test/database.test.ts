@@ -471,6 +471,7 @@ describe("Database", () => {
   it.effect("updates returns database event feed", () =>
     Effect.gen(function* () {
       const db = yield* Database;
+      yield* db.create("_global_changes").pipe(Effect.ignore);
       const name = uniqueDb();
       yield* db.create(name);
       const result = yield* db.updates();
