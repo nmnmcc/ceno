@@ -1,9 +1,10 @@
 {
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "examples/*"
   ],
-  "packageManager": "yarn@4.13.0",
+  "packageManager": "yarn@4.17.0",
   "scripts": {
     "postinstall": "effect-tsgo patch",
     "build": "yarn workspaces foreach -At --no-private run build",
@@ -23,6 +24,7 @@
     "effect": "^4.0.0-beta.84",
     "prettier": "^3.8.4",
     "tsdown": "^0.22.3",
+    "tsx": "^4.19.4",
     "typescript": "^6.0.3",
     "vitest": "^4.0.0"
   }

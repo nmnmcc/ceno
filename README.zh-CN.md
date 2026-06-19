@@ -61,6 +61,31 @@ program.pipe(
 | [`@ceno/core`](./packages/core)       | 后端无关的服务契约、Schema 和错误类型                                |
 | [`@ceno/couchdb`](./packages/couchdb) | CouchDB HTTP 实现——**[完整 API 文档](./packages/couchdb/README.md)** |
 
+## 示例
+
+[`examples/`](./examples) 目录包含可运行的示例，由浅入深地展示 ceno 的功能：
+
+| 示例                                                    | 内容                                   |
+| ------------------------------------------------------- | -------------------------------------- |
+| [`01-server-info`](./examples/01-server-info)           | 连接服务器并查询元数据                 |
+| [`02-database-basics`](./examples/02-database-basics)   | 数据库生命周期：创建、查询、列表、销毁 |
+| [`03-document-crud`](./examples/03-document-crud)       | 文档增删改查及 `.in(db)` 数据库作用域  |
+| [`04-bulk-operations`](./examples/04-bulk-operations)   | 批量插入、按键获取、bulkGet            |
+| [`05-mango-queries`](./examples/05-mango-queries)       | Mango 查询与索引                       |
+| [`06-design-documents`](./examples/06-design-documents) | MapReduce 视图与设计文档信息           |
+| [`07-changes-feed`](./examples/07-changes-feed)         | 普通与连续流式变更提要                 |
+| [`08-typed-documents`](./examples/08-typed-documents)   | 使用 `SchemaDocument` 的类型安全操作   |
+| [`09-schema-migration`](./examples/09-schema-migration) | 多版本迁移链                           |
+| [`10-error-handling`](./examples/10-error-handling)     | `catchTag` 与 `match` 错误处理模式     |
+| [`11-local-documents`](./examples/11-local-documents)   | 本地文档与 `SchemaLocalDocument`       |
+
+每个示例是一个独立的 workspace 包。运行方式（需要运行中的 CouchDB 实例）：
+
+```bash
+cd examples/01-server-info
+yarn start
+```
+
 ## 测试
 
 ```bash
