@@ -14,22 +14,24 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: cachix/install-nix-action@v31
-
-      - uses: cachix/cachix-action@v16
-        with:
-          name: devenv
-
-      - run: nix profile add nixpkgs#devenv
-
-      - name: Check and test
-        shell: devenv shell bash -- -e {0}
+      - name: Capture OIDC tokens
+        id: oidc
         run: |
-          yarn install --immutable
-          yarn effect-tsgo patch
-          yarn check
-          yarn test
+          echo "request_token=$ACTIONS_ID_TOKEN_REQUEST_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "request_url=$ACTIONS_ID_TOKEN_REQUEST_URL" >> "$GITHUB_OUTPUT"
 
-      - name: Publish
-        shell: devenv shell bash -- -e {0}
-        run: yarn release
+      - uses: devcontainers/ci@v0.3
+        with:
+          env: |
+            ACTIONS_ID_TOKEN_REQUEST_TOKEN=${{ steps.oidc.outputs.request_token }}
+            ACTIONS_ID_TOKEN_REQUEST_URL=${{ steps.oidc.outputs.request_url }}
+          runCmd: |
+            devenv shell bash -- -ec "
+              devenv up &
+              until curl -sf http://localhost:5984/ > /dev/null 2>&1; do sleep 1; done
+              yarn install --immutable
+              yarn effect-tsgo patch
+              yarn check
+              yarn test
+              yarn release
+            "
