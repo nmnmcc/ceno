@@ -10,7 +10,8 @@
     "check": "tsc -b --noEmit",
     "format": "prettier -w .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "release": "yarn workspaces foreach -At --no-private npm publish"
   },
   "devDependencies": {
     "@effect/language-service": "^0.86.2",

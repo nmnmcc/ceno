@@ -35,6 +35,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
+    "prepack": "yarn build",
     "build": "yarn run -T tsdown",
     "test:docker": "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from tests && docker compose -f docker-compose.test.yml down -v"
   },
