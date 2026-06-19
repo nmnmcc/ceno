@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.jpg" alt="ceno" width="100%" />
+</p>
+
 # ceno
 
 Type-safe [CouchDB](https://couchdb.apache.org/) client for [Effect](https://effect.website).

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.jpg" alt="ceno" width="100%" />
+</p>
+
 # ceno
 
 类型安全的 [CouchDB](https://couchdb.apache.org/) 客户端，基于 [Effect](https://effect.website) 构建。
