@@ -47,9 +47,12 @@ export namespace SchemaLocalDocument {
       | Schema.SchemaError,
       Schema.Struct.EncodingServices<F>
     >;
+
+    /** Creates a database-scoped view of these operations, removing the `db` parameter from every method. */
+    readonly in: (db: string) => SchemaDatabaseLocalDocument<F>;
   }
 
-  /** Local document operations narrowed to a single database, created by passing `db` to {@link make}. */
+  /** Local document operations narrowed to a single database, created by calling `in` on a {@link SchemaLocalDocument}. */
   export interface SchemaDatabaseLocalDocument<F extends Schema.Struct.Fields> {
     /** Retrieves a local document by ID, migrating it through the version chain to the current schema. */
     readonly get: (
@@ -79,20 +82,16 @@ export namespace SchemaLocalDocument {
   }
 
   /** Creates schema-aware local document operations from a version chain. Resolves {@link LocalDocument} from the Effect context. */
-  export const make: {
-    <From, F extends Schema.Struct.Fields>(
-      version: Version<From, F>,
-    ): Effect.Effect<SchemaLocalDocument<F>, never, LocalDocument>;
-    <From, F extends Schema.Struct.Fields>(
-      version: Version<From, F>,
-      db: string,
-    ): Effect.Effect<SchemaDatabaseLocalDocument<F>, never, LocalDocument>;
-  } = (version: any, db?: string): Effect.Effect<any, never, LocalDocument> =>
+  export const make: <From, F extends Schema.Struct.Fields>(
+    version: Version<From, F>,
+  ) => Effect.Effect<SchemaLocalDocument<F>, never, LocalDocument> = (
+    version: any,
+  ): Effect.Effect<any, never, LocalDocument> =>
     Effect.gen(function* () {
       const local = yield* LocalDocument;
       const encode = Schema.encodeEffect(toSchema(version));
 
-      const ops = {
+      const methods: Omit<SchemaLocalDocument.SchemaLocalDocument<Schema.Struct.Fields>, "in"> = {
         get: (d, docid) =>
           Effect.flatMap(local.get(d, docid), (raw) => {
             const { _id, _rev } = raw as { _id: string; _rev: string };
@@ -100,12 +99,15 @@ export namespace SchemaLocalDocument {
           }),
         insert: (d, docid, body, options) =>
           Effect.flatMap(encode(body), (encoded) => local.insert(d, docid, encoded, options)),
-      } satisfies SchemaLocalDocument.SchemaLocalDocument<Schema.Struct.Fields>;
-      if (db === undefined) return ops;
+      };
 
       return {
-        get: (docid) => ops.get(db, docid),
-        insert: (docid, body, options) => ops.insert(db, docid, body, options),
-      } satisfies SchemaLocalDocument.SchemaDatabaseLocalDocument<Schema.Struct.Fields>;
+        ...methods,
+        in: (db: string) =>
+          ({
+            get: (docid) => methods.get(db, docid),
+            insert: (docid, body, options) => methods.insert(db, docid, body, options),
+          }) satisfies SchemaLocalDocument.SchemaDatabaseLocalDocument<Schema.Struct.Fields>,
+      };
     });
 }

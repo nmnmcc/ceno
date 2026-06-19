@@ -93,11 +93,11 @@ describe("SchemaDocument", () => {
     );
   });
 
-  describe("single-db variant (with db param)", () => {
+  describe("single-db variant (via .in)", () => {
     it.effect("put and get work without explicit db argument", () =>
       withTempDb((db) =>
         Effect.gen(function* () {
-          const docs = yield* SchemaDocument.make(V2, db);
+          const docs = (yield* SchemaDocument.make(V2)).in(db);
           yield* docs.put("scoped1", { title: "Scoped", priority: 10 });
 
           const fetched = yield* docs.get("scoped1");
@@ -110,7 +110,7 @@ describe("SchemaDocument", () => {
     it.effect("insert and find work without explicit db argument", () =>
       withTempDb((db) =>
         Effect.gen(function* () {
-          const docs = yield* SchemaDocument.make(V2, db);
+          const docs = (yield* SchemaDocument.make(V2)).in(db);
           yield* docs.insert({ title: "Findable", priority: 42 });
 
           const result = yield* docs.find({ selector: { title: "Findable" } });
@@ -123,7 +123,7 @@ describe("SchemaDocument", () => {
     it.effect("bulk works without explicit db argument", () =>
       withTempDb((db) =>
         Effect.gen(function* () {
-          const docs = yield* SchemaDocument.make(V2, db);
+          const docs = (yield* SchemaDocument.make(V2)).in(db);
           const results = yield* docs.bulk([
             { title: "A", priority: 1 },
             { title: "B", priority: 2 },
@@ -192,7 +192,7 @@ describe("SchemaLocalDocument", () => {
     it.effect("insert and get work without explicit db argument", () =>
       withTempDb((db) =>
         Effect.gen(function* () {
-          const docs = yield* SchemaLocalDocument.make(V2, db);
+          const docs = (yield* SchemaLocalDocument.make(V2)).in(db);
           yield* docs.insert("prefs", { title: "Prefs", priority: 5 });
 
           const fetched = yield* docs.get("prefs");

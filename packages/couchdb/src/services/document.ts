@@ -235,7 +235,7 @@ export namespace CouchDbDocument {
     Effect.gen(function* () {
       const connect = yield* CouchDbClient;
       const client = yield* connect(Api);
-      return Document.of({
+      const methods: Omit<Document.Document, "in"> = {
         insert: (db, body, opts) => client.insert({ params: { db }, payload: body, query: { batch: opts?.batch } }),
         put: (db, docid, body, opts) =>
           client.insertWithId({
@@ -293,6 +293,34 @@ export namespace CouchDbDocument {
             params: { db, partition },
             payload: query,
           }),
+      };
+      return Document.of({
+        ...methods,
+        in: (db) => ({
+          insert: (body, opts) => methods.insert(db, body, opts),
+          put: (docid, body, opts) => methods.put(db, docid, body, opts),
+          get: (docid, opts) => methods.get(db, docid, opts),
+          head: (docid) => methods.head(db, docid),
+          destroy: (docid, rev, opts) => methods.destroy(db, docid, rev, opts),
+          bulk: (docs) => methods.bulk(db, docs),
+          bulkGet: (docs) => methods.bulkGet(db, docs),
+          list: (opts) => methods.list(db, opts),
+          fetch: (keys, opts) => methods.fetch(db, keys, opts),
+          listIndexes: () => methods.listIndexes(db),
+          createIndex: (index) => methods.createIndex(db, index),
+          deleteIndex: (ddoc, name) => methods.deleteIndex(db, ddoc, name),
+          find: (query) => methods.find(db, query),
+          explain: (query) => methods.explain(db, query),
+          attachmentInsert: (docid, attname, data, opts) => methods.attachmentInsert(db, docid, attname, data, opts),
+          attachmentGet: (docid, attname, opts) => methods.attachmentGet(db, docid, attname, opts),
+          attachmentHead: (docid, attname) => methods.attachmentHead(db, docid, attname),
+          attachmentDestroy: (docid, attname, rev, opts) => methods.attachmentDestroy(db, docid, attname, rev, opts),
+          listStream: (opts) => methods.listStream(db, opts),
+          findStream: (query) => methods.findStream(db, query),
+          partitionInfo: (partition) => methods.partitionInfo(db, partition),
+          partitionedList: (partition, opts) => methods.partitionedList(db, partition, opts),
+          partitionedFind: (partition, query) => methods.partitionedFind(db, partition, query),
+        }),
       });
     }),
   );

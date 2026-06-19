@@ -131,7 +131,13 @@ const program = Effect.gen(function* () {
 
   const info = yield* server.info;
   yield* database.create("mydb");
+
+  // pass db on every call
   const doc = yield* document.get("mydb", "abc");
+
+  // or scope to a database with .in(db) to avoid repeating the name
+  const mydb = document.in("mydb");
+  const doc2 = yield* mydb.get("abc");
 });
 
 program.pipe(

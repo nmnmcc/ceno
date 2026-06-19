@@ -100,9 +100,12 @@ export namespace SchemaDocument {
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError | Schema.SchemaError,
       Schema.Struct.EncodingServices<F>
     >;
+
+    /** Creates a database-scoped view of these operations, removing the `db` parameter from every method. */
+    readonly in: (db: string) => SchemaDatabaseDocument<F>;
   }
 
-  /** Document operations narrowed to a single database, created by passing `db` to {@link make}. */
+  /** Document operations narrowed to a single database, created by calling `in` on a {@link SchemaDocument}. */
   export interface SchemaDatabaseDocument<F extends Schema.Struct.Fields> {
     /** Retrieves a document by ID, migrating it through the version chain to the current schema. */
     readonly get: (
@@ -173,20 +176,14 @@ export namespace SchemaDocument {
   }
 
   /** Creates schema-aware document operations from a version chain. Resolves {@link Document} from the Effect context. */
-  export const make: {
-    <From, F extends Schema.Struct.Fields>(
-      version: Version<From, F>,
-    ): Effect.Effect<SchemaDocument<F>, never, Document>;
-    <From, F extends Schema.Struct.Fields>(
-      version: Version<From, F>,
-      db: string,
-    ): Effect.Effect<SchemaDatabaseDocument<F>, never, Document>;
-  } = (version: Version, db?: string): Effect.Effect<any, never, Document> =>
+  export const make: <From, F extends Schema.Struct.Fields>(
+    version: Version<From, F>,
+  ) => Effect.Effect<SchemaDocument<F>, never, Document> = (version: any): Effect.Effect<any, never, Document> =>
     Effect.gen(function* () {
       const document = yield* Document;
       const encode = Schema.encodeEffect(toSchema(version));
 
-      const ops = {
+      const methods: Omit<SchemaDocument.SchemaDocument<Schema.Struct.Fields>, "in"> = {
         get: (d, docid, options) =>
           Effect.flatMap(document.get(d, docid, options), (raw) => {
             const { _id, _rev } = raw as { _id: string; _rev: string };
@@ -204,15 +201,18 @@ export namespace SchemaDocument {
           ),
         bulk: (d, docs) =>
           Effect.flatMap(Effect.all(docs.map((doc) => encode(doc))), (encoded) => document.bulk(d, encoded)),
-      } satisfies SchemaDocument.SchemaDocument<Schema.Struct.Fields>;
-      if (db === undefined) return ops;
+      };
 
       return {
-        get: (docid, options) => ops.get(db, docid, options),
-        insert: (body, options) => ops.insert(db, body, options),
-        put: (docid, body, options) => ops.put(db, docid, body, options),
-        find: (query) => ops.find(db, query),
-        bulk: (docs) => ops.bulk(db, docs),
-      } satisfies SchemaDocument.SchemaDatabaseDocument<Schema.Struct.Fields>;
+        ...methods,
+        in: (db: string) =>
+          ({
+            get: (docid, options) => methods.get(db, docid, options),
+            insert: (body, options) => methods.insert(db, body, options),
+            put: (docid, body, options) => methods.put(db, docid, body, options),
+            find: (query) => methods.find(db, query),
+            bulk: (docs) => methods.bulk(db, docs),
+          }) satisfies SchemaDocument.SchemaDatabaseDocument<Schema.Struct.Fields>,
+      };
     });
 }

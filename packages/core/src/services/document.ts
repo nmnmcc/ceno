@@ -310,8 +310,20 @@ export interface AttachmentDestroyParams {
 export class Document extends Context.Service<Document, Document.Document>()("@ceno/core/Document") {}
 
 export namespace Document {
+  /** Document operations narrowed to a single database, created by calling `in` on the {@link Document} service. */
+  export type DatabaseDocument = {
+    readonly [K in Exclude<keyof Document, "in">]: Document[K] extends (
+      db: string,
+      ...rest: infer R
+    ) => infer Ret
+      ? (...args: R) => Ret
+      : Document[K];
+  };
+
   /** Service shape for document-level CouchDB operations. */
   export interface Document {
+    /** Creates a database-scoped view of these operations, removing the `db` parameter from every method. */
+    readonly in: (db: string) => DatabaseDocument;
     /** Inserts a document with server-generated or body-provided ID. */
     readonly insert: (
       db: string,
