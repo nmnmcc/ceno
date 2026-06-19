@@ -2,3 +2,6 @@
 	path = references/effect
 	url = https://github.com/Effect-TS/effect-smol.git
 	shallow = true
+[submodule "references/couchdb-nano"]
+	path = references/couchdb-nano
+	url = https://github.com/apache/couchdb-nano

@@ -52,11 +52,13 @@ export namespace LocalDocument {
       CenoBadRequest | CenoUnauthorized | CenoNotFound | CenoConflict | TransportError
     >;
     /** Lists all local documents. */
-    readonly list: (db: string) => Effect.Effect<DocumentListResponse, CenoUnauthorized | TransportError>;
+    readonly list: (
+      db: string,
+    ) => Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | TransportError>;
     /** Fetches specific local documents by keys. */
     readonly fetch: (
       db: string,
       body: unknown,
-    ) => Effect.Effect<DocumentFetchResponse, CenoUnauthorized | TransportError>;
+    ) => Effect.Effect<DocumentFetchResponse, CenoUnauthorized | CenoForbidden | TransportError>;
   }
 }

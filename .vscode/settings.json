@@ -1,4 +1,4 @@
 {
-  "cSpell.words": ["couchdb", "ceno", "Ceno"],
+  "cSpell.words": ["ceno", "Ceno", "couchdb", "Ndjson"],
   "js/ts.tsdk.path": "node_modules/typescript/lib"
 }

@@ -1,8 +1,4 @@
 {
   "files": [],
-  "references": [
-    { "path": "./packages/core" },
-    { "path": "./packages/couchdb" },
-    { "path": "./packages/version" }
-  ]
+  "references": [{ "path": "./packages/core" }, { "path": "./packages/couchdb" }]
 }

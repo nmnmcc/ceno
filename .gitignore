@@ -14,5 +14,6 @@ devenv.local.yaml
 
 .direnv
 .pre-commit-config.yaml
+dist
 *.tsbuildinfo
 *.local.*

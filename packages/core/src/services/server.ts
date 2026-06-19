@@ -1,5 +1,6 @@
 import { Context, Schema, type Effect } from "effect";
 
+import type { OkResponse } from "./database";
 import type { CenoBadRequest, CenoForbidden, CenoUnauthorized, TransportError } from "./errors";
 
 // ---------------------------------------------------------------------------
@@ -34,8 +35,15 @@ export type DatabaseAuthResponse = typeof DatabaseAuthResponse.Type;
 /** Session info from `GET /_session`. */
 export const DatabaseSessionResponse = Schema.Struct({
   ok: Schema.Boolean,
-  userCtx: Schema.Unknown,
-  info: Schema.Unknown,
+  userCtx: Schema.Struct({
+    name: Schema.NullOr(Schema.String),
+    roles: Schema.Array(Schema.String),
+  }),
+  info: Schema.Struct({
+    authenticated: Schema.optional(Schema.String),
+    authentication_db: Schema.optional(Schema.String),
+    authentication_handlers: Schema.optional(Schema.Array(Schema.String)),
+  }),
 });
 export type DatabaseSessionResponse = typeof DatabaseSessionResponse.Type;
 
@@ -50,17 +58,19 @@ export namespace Server {
   /** Service shape for server-level CouchDB operations. */
   export interface Server {
     /** Retrieves CouchDB server metadata. */
-    readonly info: Effect.Effect<InfoResponse, TransportError>;
+    readonly info: Effect.Effect<InfoResponse, CenoUnauthorized | CenoForbidden | TransportError>;
     /** Generates one or more UUIDs on the server. */
     readonly uuids: (options?: {
       readonly count?: number;
-    }) => Effect.Effect<UUIDObject, CenoBadRequest | CenoForbidden | TransportError>;
+    }) => Effect.Effect<UUIDObject, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
     /** Authenticates via cookie-based session. */
     readonly auth: (credentials: {
       readonly name: string;
       readonly password: string;
-    }) => Effect.Effect<DatabaseAuthResponse, CenoBadRequest | CenoUnauthorized | TransportError>;
+    }) => Effect.Effect<DatabaseAuthResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
     /** Retrieves current session info. */
-    readonly session: Effect.Effect<DatabaseSessionResponse, CenoUnauthorized | TransportError>;
+    readonly session: Effect.Effect<DatabaseSessionResponse, CenoUnauthorized | CenoForbidden | TransportError>;
+    /** Closes the current session (cookie-based logout). */
+    readonly logout: Effect.Effect<OkResponse, CenoUnauthorized | CenoForbidden | TransportError>;
   }
 }

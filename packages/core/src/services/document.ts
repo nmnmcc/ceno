@@ -1,6 +1,7 @@
 import { Context, Schema, type Effect, type Stream } from "effect";
 import type { HttpClientError } from "effect/unstable/http";
 
+import type { OkResponse } from "./database";
 import type {
   CenoBadContentType,
   CenoBadRequest,
@@ -35,6 +36,7 @@ export type DocumentDestroyResponse = typeof DocumentDestroyResponse.Type;
 /** Single result from `_bulk_docs`. */
 export const DocumentBulkResponse = Schema.Struct({
   id: Schema.String,
+  ok: Schema.optional(Schema.Boolean),
   rev: Schema.optional(Schema.String),
   error: Schema.optional(Schema.String),
   reason: Schema.optional(Schema.String),
@@ -51,11 +53,11 @@ export const DocumentResponseRow = Schema.Struct({
 });
 export type DocumentResponseRow = typeof DocumentResponseRow.Type;
 
-/** Response from `_all_docs`. */
+/** Response from `_all_docs` and `_local_docs`. CouchDB returns `null` for `offset`/`total_rows` on `_local_docs`. */
 export const DocumentListResponse = Schema.Struct({
-  offset: Schema.Number,
+  offset: Schema.NullOr(Schema.Number),
   rows: Schema.Array(DocumentResponseRow),
-  total_rows: Schema.Number,
+  total_rows: Schema.NullOr(Schema.Number),
   update_seq: Schema.optional(Schema.Union([Schema.Number, Schema.String])),
 });
 export type DocumentListResponse = typeof DocumentListResponse.Type;
@@ -66,11 +68,11 @@ const DocumentLookupFailure = Schema.Struct({
   error: Schema.String,
 });
 
-/** Response from `_all_docs` fetch. */
+/** Response from `_all_docs` fetch. CouchDB returns `null` for `offset`/`total_rows` on `_local_docs`. */
 export const DocumentFetchResponse = Schema.Struct({
-  offset: Schema.Number,
+  offset: Schema.NullOr(Schema.Number),
   rows: Schema.Array(Schema.Union([DocumentResponseRow, DocumentLookupFailure])),
-  total_rows: Schema.Number,
+  total_rows: Schema.NullOr(Schema.Number),
   update_seq: Schema.optional(Schema.Union([Schema.Number, Schema.String])),
 });
 export type DocumentFetchResponse = typeof DocumentFetchResponse.Type;
@@ -111,13 +113,61 @@ export const PartitionInfoResponse = Schema.Struct({
 });
 export type PartitionInfoResponse = typeof PartitionInfoResponse.Type;
 
+/** Single document result from `_bulk_get`. */
+const BulkGetResultDoc = Schema.Union([
+  Schema.Struct({ ok: Schema.Unknown }),
+  Schema.Struct({
+    error: Schema.Struct({
+      id: Schema.String,
+      rev: Schema.String,
+      error: Schema.String,
+      reason: Schema.String,
+    }),
+  }),
+]);
+
+/** Response from `POST /{db}/_bulk_get`. */
+export const BulkGetResponse = Schema.Struct({
+  results: Schema.Array(
+    Schema.Struct({
+      id: Schema.String,
+      docs: Schema.Array(BulkGetResultDoc),
+    }),
+  ),
+});
+export type BulkGetResponse = typeof BulkGetResponse.Type;
+
+/** Index entry from `GET /{db}/_index`. */
+const IndexDef = Schema.Struct({
+  ddoc: Schema.NullOr(Schema.String),
+  name: Schema.String,
+  type: Schema.String,
+  def: Schema.Unknown,
+  partitioned: Schema.optional(Schema.Boolean),
+});
+
+/** Response from `GET /{db}/_index`. */
+export const IndexListResponse = Schema.Struct({
+  total_rows: Schema.Number,
+  indexes: Schema.Array(IndexDef),
+});
+export type IndexListResponse = typeof IndexListResponse.Type;
+
+/** Response from `POST /{db}/_explain`. */
+export const ExplainResponse = Schema.Unknown;
+export type ExplainResponse = typeof ExplainResponse.Type;
+
 // ---------------------------------------------------------------------------
 // Parameter Types
 // ---------------------------------------------------------------------------
 
-/** Params for document insert or update. */
+/** Params for inserting a document via POST (server-assigned ID). */
 export interface DocumentInsertParams {
-  readonly docName?: string;
+  readonly batch?: "ok";
+}
+
+/** Params for creating or updating a document at a specific ID via PUT. */
+export interface DocumentPutParams {
   readonly rev?: string;
   readonly batch?: "ok";
   readonly new_edits?: boolean;
@@ -198,6 +248,8 @@ export interface MangoQuery {
   readonly stable?: boolean;
   readonly stale?: "ok" | false;
   readonly execution_stats?: boolean;
+  readonly conflicts?: boolean;
+  readonly allow_fallback?: boolean;
 }
 
 /** Create index request body. */
@@ -228,23 +280,26 @@ export interface MaybeDocument {
   readonly _rev?: string;
 }
 
-/** Attachment data. */
-export interface AttachmentData {
-  readonly name: string;
-  readonly data: unknown;
-  readonly content_type: string;
+/** Params for `_bulk_get`. */
+export interface BulkGetDoc {
+  readonly id: string;
+  readonly rev?: string;
+  readonly atts_since?: readonly string[];
 }
 
-/** Changes reader options. */
-export interface ChangesReaderOptions {
-  readonly batchSize?: number;
-  readonly fastChanges?: boolean;
-  readonly since?: string | number;
-  readonly includeDocs?: boolean;
-  readonly timeout?: number;
-  readonly wait?: boolean;
-  readonly qs?: object;
-  readonly selector?: MangoSelector;
+/** Params for document delete. */
+export interface DocumentDestroyParams {
+  readonly batch?: "ok";
+}
+
+/** Params for attachment GET. */
+export interface AttachmentGetParams {
+  readonly rev?: string;
+}
+
+/** Params for attachment DELETE. */
+export interface AttachmentDestroyParams {
+  readonly batch?: "ok";
 }
 
 // ---------------------------------------------------------------------------
@@ -261,6 +316,7 @@ export namespace Document {
     readonly insert: (
       db: string,
       body: unknown,
+      options?: DocumentInsertParams,
     ) => Effect.Effect<
       DocumentInsertResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
@@ -270,7 +326,7 @@ export namespace Document {
       db: string,
       docid: string,
       body: unknown,
-      options?: { readonly rev?: string },
+      options?: DocumentPutParams,
     ) => Effect.Effect<
       DocumentInsertResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
@@ -280,17 +336,21 @@ export namespace Document {
       db: string,
       docid: string,
       options?: DocumentGetParams,
-    ) => Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoNotFound | TransportError>;
+    ) => Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
     /** Checks whether a document exists (HEAD request). */
-    readonly head: (db: string, docid: string) => Effect.Effect<void, TransportError>;
+    readonly head: (
+      db: string,
+      docid: string,
+    ) => Effect.Effect<void, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
     /** Deletes a document by ID and revision. */
     readonly destroy: (
       db: string,
       docid: string,
       rev: string,
+      options?: DocumentDestroyParams,
     ) => Effect.Effect<
       DocumentDestroyResponse,
-      CenoBadRequest | CenoUnauthorized | CenoNotFound | CenoConflict | TransportError
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
     >;
     /** Inserts or updates multiple documents in bulk. */
     readonly bulk: (
@@ -298,32 +358,67 @@ export namespace Document {
       docs: readonly unknown[],
     ) => Effect.Effect<
       readonly DocumentBulkResponse[],
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | TransportError
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
+    >;
+    /** Retrieves multiple documents by ID and optional revision in a single request. */
+    readonly bulkGet: (
+      db: string,
+      docs: readonly BulkGetDoc[],
+    ) => Effect.Effect<
+      BulkGetResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoBadContentType | TransportError
     >;
     /** Lists all documents in a database. */
     readonly list: (
       db: string,
       options?: DocumentListParams,
-    ) => Effect.Effect<DocumentListResponse, CenoUnauthorized | TransportError>;
+    ) => Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
     /** Fetches specific documents by keys. */
     readonly fetch: (
       db: string,
       keys: readonly string[],
       options?: DocumentFetchParams,
-    ) => Effect.Effect<DocumentFetchResponse, CenoUnauthorized | TransportError>;
+    ) => Effect.Effect<DocumentFetchResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
+    /** Lists all Mango indexes in a database. */
+    readonly listIndexes: (
+      db: string,
+    ) => Effect.Effect<
+      IndexListResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoInternalServerError | TransportError
+    >;
     /** Creates a Mango index. */
     readonly createIndex: (
       db: string,
       index: CreateIndexRequest,
     ) => Effect.Effect<
       CreateIndexResponse,
-      CenoBadRequest | CenoUnauthorized | CenoInternalServerError | TransportError
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+    >;
+    /** Deletes a Mango index. */
+    readonly deleteIndex: (
+      db: string,
+      ddoc: string,
+      name: string,
+    ) => Effect.Effect<
+      OkResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
     >;
     /** Executes a Mango query. */
     readonly find: (
       db: string,
       query: MangoQuery,
-    ) => Effect.Effect<MangoResponse, CenoBadRequest | CenoUnauthorized | CenoInternalServerError | TransportError>;
+    ) => Effect.Effect<
+      MangoResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+    >;
+    /** Shows which index a Mango query would use without executing it. */
+    readonly explain: (
+      db: string,
+      query: MangoQuery,
+    ) => Effect.Effect<
+      ExplainResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoInternalServerError | TransportError
+    >;
     /** Uploads an attachment to a document. */
     readonly attachmentInsert: (
       db: string,
@@ -333,48 +428,56 @@ export namespace Document {
       options?: { readonly rev?: string },
     ) => Effect.Effect<
       DocumentInsertResponse,
-      CenoBadRequest | CenoUnauthorized | CenoNotFound | CenoConflict | TransportError
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
     >;
     /** Downloads an attachment as a byte stream. */
     readonly attachmentGet: (
       db: string,
       docid: string,
       attname: string,
+      options?: AttachmentGetParams,
     ) => Effect.Effect<
       Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
-      CenoUnauthorized | CenoNotFound | TransportError
+      CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
     >;
+    /** Checks whether an attachment exists (HEAD request). */
+    readonly attachmentHead: (
+      db: string,
+      docid: string,
+      attname: string,
+    ) => Effect.Effect<void, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
     /** Deletes an attachment from a document. */
     readonly attachmentDestroy: (
       db: string,
       docid: string,
       attname: string,
       rev: string,
+      options?: AttachmentDestroyParams,
     ) => Effect.Effect<
       DocumentDestroyResponse,
-      CenoBadRequest | CenoUnauthorized | CenoNotFound | CenoConflict | TransportError
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
     >;
-    /** Streams all documents as raw bytes. */
+    /** Streams all documents as decoded text. */
     readonly listStream: (
       db: string,
       options?: DocumentListParams,
-    ) => Effect.Effect<Stream.Stream<Uint8Array, HttpClientError.HttpClientError>, TransportError>;
-    /** Streams Mango query results as raw bytes. */
+    ) => Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
+    /** Streams Mango query results as decoded text. */
     readonly findStream: (
       db: string,
       query: MangoQuery,
-    ) => Effect.Effect<Stream.Stream<Uint8Array, HttpClientError.HttpClientError>, TransportError>;
+    ) => Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
     /** Retrieves partition metadata. */
     readonly partitionInfo: (
       db: string,
       partition: string,
-    ) => Effect.Effect<PartitionInfoResponse, CenoBadRequest | CenoUnauthorized | CenoNotFound | TransportError>;
+    ) => Effect.Effect<PartitionInfoResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
     /** Lists all documents in a partition. */
     readonly partitionedList: (
       db: string,
       partition: string,
       options?: DocumentListParams,
-    ) => Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoNotFound | TransportError>;
+    ) => Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
     /** Executes a Mango query within a partition. */
     readonly partitionedFind: (
       db: string,
@@ -382,7 +485,7 @@ export namespace Document {
       query: MangoQuery,
     ) => Effect.Effect<
       MangoResponse,
-      CenoBadRequest | CenoUnauthorized | CenoNotFound | CenoInternalServerError | TransportError
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
     >;
   }
 }

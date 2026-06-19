@@ -1,19 +1,18 @@
 import { Layer } from "effect";
 
-import { DatabaseLayer } from "./database";
-import { DesignDocumentLayer } from "./design-document";
-import { DocumentLayer } from "./document";
-import { LocalDocumentLayer } from "./local-document";
-import { ServerLayer } from "./server";
+import { CouchDbDatabase } from "./services/database";
+import { CouchDbDesignDocument } from "./services/design-document";
+import { CouchDbDocument } from "./services/document";
+import { CouchDbLocalDocument } from "./services/local-document";
+import { CouchDbServer } from "./services/server";
 
-export * from "@ceno/core";
-export * from "./client";
-export * from "./errors";
-export * from "./server";
-export * from "./database";
-export * from "./document";
-export * from "./design-document";
-export * from "./local-document";
+export * from "./services";
 
 /** Every CouchDB-backed @ceno/core service implementation merged into one layer; still requires a {@link CouchDbClient} (see `CouchDbClient.layer`) and an `HttpClient` to run. */
-export const layer = Layer.mergeAll(ServerLayer, DatabaseLayer, DocumentLayer, DesignDocumentLayer, LocalDocumentLayer);
+export const layer = Layer.mergeAll(
+  CouchDbServer.layer,
+  CouchDbDatabase.layer,
+  CouchDbDocument.layer,
+  CouchDbDesignDocument.layer,
+  CouchDbLocalDocument.layer,
+);

@@ -6,11 +6,8 @@
 with pkgs;
 
 {
-  devcontainer.enable = true;
-
   packages = [
     git
-    fish
   ];
 
   languages.javascript = {
