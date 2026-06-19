@@ -2,7 +2,7 @@
   "name": "@ceno/core",
   "version": "0.1.0",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "description": "Backend-agnostic service contracts, schemas, and errors for ceno — a type-safe CouchDB client built on Effect",
   "keywords": [
     "couchdb",

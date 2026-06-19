@@ -6,8 +6,6 @@
 with pkgs;
 
 {
-  devcontainer.enable = true;
-
   packages = [
     curl
     git
