@@ -19,6 +19,5 @@ with pkgs;
 
   services.couchdb = {
     enable = true;
-    settings.admins.admin = "password";
   };
 }

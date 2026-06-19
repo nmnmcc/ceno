@@ -35,7 +35,7 @@ describe("Server", () => {
   it.effect("auth authenticates with valid credentials", () =>
     Effect.gen(function* () {
       const server = yield* Server;
-      const result = yield* server.auth({ name: "admin", password: "password" });
+      const result = yield* server.auth({ name: "admin", password: "admin" });
       strictEqual(result.ok, true);
       strictEqual(result.name, "admin");
     }).pipe(Effect.provide(TestLayer)),

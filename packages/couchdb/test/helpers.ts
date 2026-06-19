@@ -5,7 +5,7 @@ import { FetchHttpClient } from "effect/unstable/http";
 
 export const COUCHDB_URL = process.env["COUCHDB_URL"] ?? "http://localhost:5984";
 export const COUCHDB_USER = process.env["COUCHDB_USER"] ?? "admin";
-export const COUCHDB_PASSWORD = process.env["COUCHDB_PASSWORD"] ?? "password";
+export const COUCHDB_PASSWORD = process.env["COUCHDB_PASSWORD"] ?? "admin";
 
 /** Shared layer wiring every @ceno/core service to a real CouchDB instance. */
 export const TestLayer = layer.pipe(
