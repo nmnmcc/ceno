@@ -28,10 +28,10 @@ const program = Effect.gen(function* () {
   yield* database.create("example-db");
   console.log("Database created");
 
-  yield* database.head("example-db");
-  console.log("Database exists (head check passed)");
+  const exists = yield* database.exists("example-db");
+  console.log("Database exists:", exists);
 
-  const info = yield* database.get("example-db");
+  const info = yield* database.info("example-db");
   console.log("DB name:", info.db_name);
   console.log("Doc count:", info.doc_count);
   console.log("Disk size:", info.sizes.file, "bytes");

@@ -193,13 +193,6 @@ export const SecurityObject = Schema.Struct({
 });
 export type SecurityObject = typeof SecurityObject.Type;
 
-/** Response from `POST /{db}/_ensure_full_commit` (deprecated no-op in CouchDB 3.0). */
-export const EnsureFullCommitResponse = Schema.Struct({
-  instance_start_time: Schema.String,
-  ok: Schema.Boolean,
-});
-export type EnsureFullCommitResponse = typeof EnsureFullCommitResponse.Type;
-
 /** Single item from `GET/POST /_dbs_info`. */
 const DbsInfoItem = Schema.Struct({
   key: Schema.String,
@@ -229,14 +222,10 @@ export namespace Database {
       DatabaseCreateResponse,
       CenoIllegalDatabaseName | CenoUnauthorized | CenoForbidden | CenoAlreadyExists | TransportError
     >;
-    /** Retrieves database metadata. */
-    readonly get: (
-      name: string,
-    ) => Effect.Effect<DatabaseGetResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
+
     /** Checks whether a database exists (HEAD request). */
-    readonly head: (
-      name: string,
-    ) => Effect.Effect<void, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
+    readonly exists: (name: string) => Effect.Effect<boolean, CenoUnauthorized | CenoForbidden | TransportError>;
+
     /** Deletes a database. */
     readonly destroy: (
       name: string,
@@ -244,18 +233,23 @@ export namespace Database {
       OkResponse,
       CenoIllegalDatabaseName | CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
     >;
+
     /** Lists all database names. */
     readonly list: (
       options?: DatabaseListParams,
     ) => Effect.Effect<readonly string[], CenoUnauthorized | CenoForbidden | TransportError>;
+
     /** Retrieves metadata for multiple databases in a single request (GET). */
-    readonly dbsInfo: (
-      options?: DatabaseListParams,
-    ) => Effect.Effect<DbsInfoResponse, CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Retrieves metadata for specific databases by name (POST). */
-    readonly dbsInfoPost: (
-      keys: readonly string[],
-    ) => Effect.Effect<DbsInfoResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+    readonly info: {
+      (
+        name: string,
+      ): Effect.Effect<DatabaseGetResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
+      (options?: DatabaseListParams): Effect.Effect<DbsInfoResponse, CenoUnauthorized | CenoForbidden | TransportError>;
+      (
+        keys: readonly string[],
+      ): Effect.Effect<DbsInfoResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+    };
+
     /** Triggers compaction on a database or design document. */
     readonly compact: (
       name: string,
@@ -264,36 +258,46 @@ export namespace Database {
       OkResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoBadContentType | TransportError
     >;
+
     /** Removes unused view index files (POST). */
     readonly viewCleanup: (
       name: string,
-    ) => Effect.Effect<
-      OkResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | TransportError
-    >;
-    /** Commits recent changes to disk (deprecated no-op in CouchDB 3.0). */
-    readonly ensureFullCommit: (
-      name: string,
-    ) => Effect.Effect<
-      EnsureFullCommitResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | TransportError
-    >;
-    /** Retrieves the database security object. */
-    readonly getSecurity: (
-      name: string,
-    ) => Effect.Effect<SecurityObject, CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Sets the database security object. */
-    readonly setSecurity: (
-      name: string,
-      security: SecurityObject,
-    ) => Effect.Effect<OkResponse, CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Retrieves the current revision limit for the database. */
-    readonly getRevsLimit: (name: string) => Effect.Effect<number, CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Sets the revision limit for the database. */
-    readonly setRevsLimit: (
-      name: string,
-      limit: number,
-    ) => Effect.Effect<OkResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+    ) => Effect.Effect<void, CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | TransportError>;
+
+    readonly security: {
+      /** Retrieves the database security object. */
+      readonly get: (name: string) => Effect.Effect<SecurityObject, CenoUnauthorized | CenoForbidden | TransportError>;
+      /** Sets the database security object. */
+      readonly set: (
+        name: string,
+        security: SecurityObject,
+      ) => Effect.Effect<OkResponse, CenoUnauthorized | CenoForbidden | TransportError>;
+    };
+
+    readonly revs: {
+      readonly limit: {
+        /** Retrieves the current revision limit for the database. */
+        readonly get: (name: string) => Effect.Effect<number, CenoUnauthorized | CenoForbidden | TransportError>;
+        /** Sets the revision limit for the database. */
+        readonly set: (
+          name: string,
+          limit: number,
+        ) => Effect.Effect<OkResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+      };
+
+      /** Finds document revisions not present in the database. */
+      readonly missing: (
+        name: string,
+        body: unknown,
+      ) => Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+
+      /** Returns the subset of revisions that do not correspond to revisions stored in the database. */
+      readonly diff: (
+        name: string,
+        body: unknown,
+      ) => Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+    };
+
     /** Permanently removes references to specified document revisions. */
     readonly purge: (
       name: string,
@@ -302,25 +306,18 @@ export namespace Database {
       unknown,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | CenoInternalServerError | TransportError
     >;
-    /** Retrieves the current purged infos limit. */
-    readonly getPurgedInfosLimit: (
-      name: string,
-    ) => Effect.Effect<number, CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Sets the purged infos limit. */
-    readonly setPurgedInfosLimit: (
-      name: string,
-      limit: number,
-    ) => Effect.Effect<OkResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Finds document revisions not present in the database. */
-    readonly missingRevs: (
-      name: string,
-      body: unknown,
-    ) => Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Returns the subset of revisions that do not correspond to revisions stored in the database. */
-    readonly revsDiff: (
-      name: string,
-      body: unknown,
-    ) => Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+
+    readonly purgedInfosLimit: {
+      /** Retrieves the current purged infos limit. */
+      readonly get: (name: string) => Effect.Effect<number, CenoUnauthorized | CenoForbidden | TransportError>;
+
+      /** Sets the purged infos limit. */
+      readonly set: (
+        name: string,
+        limit: number,
+      ) => Effect.Effect<OkResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+    };
+
     /** Starts a replication between two databases. */
     readonly replicate: (
       options: DatabaseReplicateOptions,
@@ -328,24 +325,28 @@ export namespace Database {
       DatabaseReplicateResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
     >;
-    /** Retrieves the changes feed for a database (GET). */
-    readonly changes: (
-      name: string,
-      options?: DatabaseChangesParams,
-    ) => Effect.Effect<DatabaseChangesResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Retrieves the changes feed for a database via POST (supports doc_ids/selector in body). */
-    readonly changesPost: (
-      name: string,
-      body: unknown,
-    ) => Effect.Effect<DatabaseChangesResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Streams parsed change events from the continuous changes feed. */
-    readonly changesStream: (
-      name: string,
-      options?: DatabaseChangesParams,
-    ) => Effect.Effect<
-      Stream.Stream<DatabaseChangesResultItem, HttpClientError.HttpClientError | Schema.SchemaError>,
-      TransportError
-    >;
+
+    readonly changes: {
+      /** Retrieves the changes feed for a database (GET). */
+      (
+        name: string,
+        options?: DatabaseChangesParams,
+      ): Effect.Effect<DatabaseChangesResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+      /** Streams parsed change events from the continuous changes feed (pass `stream: true`). */
+      (
+        name: string,
+        options: DatabaseChangesParams & { stream: true },
+      ): Effect.Effect<
+        Stream.Stream<DatabaseChangesResultItem, HttpClientError.HttpClientError | Schema.SchemaError>,
+        TransportError
+      >;
+      /** Retrieves the changes feed for a database via POST (supports doc_ids/selector in body). */
+      (
+        name: string,
+        body: unknown,
+      ): Effect.Effect<DatabaseChangesResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+    };
+
     /** Retrieves global database update events. */
     readonly updates: (
       options?: UpdatesParams,
