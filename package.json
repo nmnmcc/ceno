@@ -11,8 +11,7 @@
     "check": "tsc -b --noEmit",
     "format": "prettier -w .",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "release": "yarn workspaces foreach -At --no-private npm publish --provenance --access public"
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@effect/language-service": "^0.86.2",

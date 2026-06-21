@@ -36,4 +36,4 @@ jobs:
 
       - name: Publish
         shell: devenv shell bash -- -e {0}
-        run: yarn release
+        run: yarn workspaces foreach -At --no-private npm publish --provenance --access public
