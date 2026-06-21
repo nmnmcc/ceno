@@ -49,11 +49,10 @@ const program = Effect.gen(function* () {
     latest.results.map((r) => r.id),
   );
 
-  // Continuous changes stream — emits items as they arrive (pass `stream: true` with feed: "continuous")
-  const stream = yield* database.changes("example-changes", {
+  // Continuous changes stream — emits items as they arrive (feed: "continuous")
+  const stream = yield* database.changesStream("example-changes", {
     feed: "continuous",
     since: "now",
-    stream: true,
   });
   const fiber = yield* stream.pipe(Stream.take(1), Stream.runCollect, Effect.forkChild());
   yield* Effect.sleep("100 millis");

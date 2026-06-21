@@ -29,7 +29,7 @@ const program = Effect.gen(function* () {
   yield* database.create("example-bulk");
 
   // Bulk insert multiple documents
-  const results = yield* docs.bulk.write([
+  const results = yield* docs.bulk([
     { _id: "user:alice", name: "Alice", role: "admin" },
     { _id: "user:bob", name: "Bob", role: "editor" },
     { _id: "user:charlie", name: "Charlie", role: "viewer" },
@@ -47,7 +47,7 @@ const program = Effect.gen(function* () {
   );
 
   // Bulk get with revision info
-  const bulkResult = yield* docs.bulk.get([{ id: "user:alice" }, { id: "user:bob" }]);
+  const bulkResult = yield* docs.bulkGet([{ id: "user:alice" }, { id: "user:bob" }]);
   for (const item of bulkResult.results) {
     console.log(`bulkGet ${item.id}:`, item.docs.length, "revision(s)");
   }

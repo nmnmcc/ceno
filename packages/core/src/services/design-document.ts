@@ -146,7 +146,7 @@ export namespace DesignDocument {
       db: string,
       ddoc: string,
     ): Effect.Effect<DesignDocumentInfoResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
-    /** Queries a view by options, by an explicit set of keys, or as a decoded-text stream via `stream: true`. */
+    /** Queries a view. */
     view(
       db: string,
       ddoc: string,
@@ -156,13 +156,8 @@ export namespace DesignDocument {
       DesignDocumentViewResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
     >;
-    view(
-      db: string,
-      ddoc: string,
-      viewname: string,
-      options: DesignDocumentViewParams & { stream: true },
-    ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
-    view(
+    /** Queries a view, passing an explicit set of keys in the request body. */
+    viewPost(
       db: string,
       ddoc: string,
       viewname: string,
@@ -171,7 +166,14 @@ export namespace DesignDocument {
       DesignDocumentViewResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
     >;
-    /** Queries a full-text search index, when the backend provides one; pass `stream: true` for a decoded-text stream. */
+    /** Streams view results as decoded text. */
+    viewStream(
+      db: string,
+      ddoc: string,
+      viewname: string,
+      options?: DesignDocumentViewParams,
+    ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
+    /** Queries a full-text search index, when the backend provides one. */
     search(
       db: string,
       ddoc: string,
@@ -181,71 +183,66 @@ export namespace DesignDocument {
       DesignDocumentSearchResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
     >;
-    search(
+    /** Streams full-text search results as decoded text, when the backend provides one. */
+    searchStream(
       db: string,
       ddoc: string,
       index: string,
-      options: DesignDocumentSearchParams & { stream: true },
+      options?: DesignDocumentSearchParams,
     ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
-    /** Legacy render functions executed server-side. */
-    readonly render: {
-      /** Renders a document through a show function. */
-      show(
-        db: string,
-        ddoc: string,
-        func: string,
-        docid: string,
-      ): Effect.Effect<
-        unknown,
-        CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-      >;
-      /** Applies an update handler to an existing document. */
-      update(
-        db: string,
-        ddoc: string,
-        func: string,
-        docid: string,
-        body: unknown,
-      ): Effect.Effect<
-        unknown,
-        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-      >;
-      /** Applies a list function to a view. */
-      list(
-        db: string,
-        ddoc: string,
-        list: string,
-        viewname: string,
-        options?: DesignDocumentViewParams,
-      ): Effect.Effect<
-        unknown,
-        CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-      >;
-    };
-    /** Queries views and search indexes scoped to a single partition. */
-    readonly partition: {
-      /** Queries a view within a partition. */
-      view(
-        db: string,
-        partition: string,
-        ddoc: string,
-        viewname: string,
-        options?: DesignDocumentViewParams,
-      ): Effect.Effect<
-        DesignDocumentViewResponse,
-        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
-      >;
-      /** Queries a search index within a partition, when the backend provides one. */
-      search(
-        db: string,
-        partition: string,
-        ddoc: string,
-        index: string,
-        options?: DesignDocumentSearchParams,
-      ): Effect.Effect<
-        DesignDocumentSearchResponse,
-        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-      >;
-    };
+    /** Renders a document through a show function. */
+    show(
+      db: string,
+      ddoc: string,
+      func: string,
+      docid: string,
+    ): Effect.Effect<
+      unknown,
+      CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+    >;
+    /** Applies an update handler to an existing document. */
+    updateHandler(
+      db: string,
+      ddoc: string,
+      func: string,
+      docid: string,
+      body: unknown,
+    ): Effect.Effect<
+      unknown,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+    >;
+    /** Applies a list function to a view. */
+    viewWithList(
+      db: string,
+      ddoc: string,
+      list: string,
+      viewname: string,
+      options?: DesignDocumentViewParams,
+    ): Effect.Effect<
+      unknown,
+      CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+    >;
+    /** Queries a view within a single partition. */
+    partitionedView(
+      db: string,
+      partition: string,
+      ddoc: string,
+      viewname: string,
+      options?: DesignDocumentViewParams,
+    ): Effect.Effect<
+      DesignDocumentViewResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
+    >;
+    /** Queries a search index within a single partition, when the backend provides one. */
+    partitionedSearch(
+      db: string,
+      partition: string,
+      ddoc: string,
+      index: string,
+      options?: DesignDocumentSearchParams,
+    ): Effect.Effect<
+      DesignDocumentSearchResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+    >;
   }
 }

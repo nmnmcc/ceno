@@ -11,7 +11,7 @@ import {
   parseNdjsonStream,
   SecurityObject,
 } from "@ceno/core";
-import { Effect, Layer, Match, Schema } from "effect";
+import { Effect, Layer, Schema } from "effect";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi";
 
 import { CouchDbClient } from "./client";
@@ -209,46 +209,48 @@ export namespace CouchDbDatabase {
           client.head({ params: { name } }).pipe(
             Effect.as(true),
             Effect.catchTag("CenoNotFound", () => Effect.succeed(false)),
+            // A HEAD carries no body, so a missing database arrives as a raw 404
+            // status rather than a decoded CenoNotFound.
+            Effect.catchIf(
+              (error) =>
+                error._tag === "HttpClientError" &&
+                "reason" in error &&
+                typeof error.reason === "object" &&
+                error.reason !== null &&
+                "_tag" in error.reason &&
+                error.reason._tag === "StatusCodeError" &&
+                "response" in error.reason &&
+                typeof error.reason.response === "object" &&
+                error.reason.response !== null &&
+                "status" in error.reason.response &&
+                error.reason.response.status === 404,
+              () => Effect.succeed(false),
+            ),
           ),
         destroy: (name) => client.destroy({ params: { name } }),
         list: (opts) => client.list({ query: opts ?? {} }),
-        info: (arg) =>
-          Match.value(arg).pipe(
-            Match.when(Match.string, (name) => client.get({ params: { name } })),
-            Match.when(Array.isArray, (keys) => client.dbsInfoPost({ payload: { keys } })),
-            Match.orElse((options) => client.dbsInfo({ query: options ?? {} })),
-          ) as never,
+        info: (name) => client.get({ params: { name } }),
+        dbsInfo: (options) => client.dbsInfo({ query: options ?? {} }),
+        dbsInfoPost: (keys) => client.dbsInfoPost({ payload: { keys } }),
         compact: (name, ddoc) => client.compact({ params: { name, ddoc }, payload: {} }),
         viewCleanup: (name) => client.viewCleanup({ params: { name }, payload: {} }),
-        security: {
-          get: (name) => client.getSecurity({ params: { name } }),
-          set: (name, security) => client.setSecurity({ params: { name }, payload: security }),
-        },
-        revs: {
-          limit: {
-            get: (name) => client.getRevsLimit({ params: { name } }),
-            set: (name, limit) => client.setRevsLimit({ params: { name }, payload: limit }),
-          },
-          missing: (name, body) => client.missingRevs({ params: { name }, payload: body }),
-          diff: (name, body) => client.revsDiff({ params: { name }, payload: body }),
-        },
+        getSecurity: (name) => client.getSecurity({ params: { name } }),
+        setSecurity: (name, security) => client.setSecurity({ params: { name }, payload: security }),
+        getRevsLimit: (name) => client.getRevsLimit({ params: { name } }),
+        setRevsLimit: (name, limit) => client.setRevsLimit({ params: { name }, payload: limit }),
+        missingRevs: (name, body) => client.missingRevs({ params: { name }, payload: body }),
+        revsDiff: (name, body) => client.revsDiff({ params: { name }, payload: body }),
         purge: (name, body) => client.purge({ params: { name }, payload: body }),
-        purgedInfosLimit: {
-          get: (name) => client.getPurgedInfosLimit({ params: { name } }),
-          set: (name, limit) => client.setPurgedInfosLimit({ params: { name }, payload: limit }),
-        },
+        getPurgedInfosLimit: (name) => client.getPurgedInfosLimit({ params: { name } }),
+        setPurgedInfosLimit: (name, limit) => client.setPurgedInfosLimit({ params: { name }, payload: limit }),
         replicate: (opts) => client.replicate({ payload: opts }),
-        changes: (name, options) =>
-          Match.value(options).pipe(
-            Match.when(Match.undefined, () => client.changes({ params: { name }, query: {} })),
-            Match.when({ stream: true }, (query) =>
-              Effect.map(
-                client.changesStream({ params: { name }, query }),
-                parseNdjsonStream(DatabaseChangesResultItem),
-              ),
-            ),
-            Match.orElse((body) => client.changesPost({ params: { name }, payload: body })),
-          ) as never,
+        changes: (name, options) => client.changes({ params: { name }, query: options ?? {} }),
+        changesPost: (name, body) => client.changesPost({ params: { name }, payload: body }),
+        changesStream: (name, options) =>
+          Effect.map(
+            client.changesStream({ params: { name }, query: options ?? {} }),
+            parseNdjsonStream(DatabaseChangesResultItem),
+          ),
         updates: (opts) => client.updates({ query: opts ?? {} }),
       });
     }),

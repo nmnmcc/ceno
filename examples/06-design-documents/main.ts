@@ -39,7 +39,7 @@ const program = Effect.gen(function* () {
   });
 
   // Seed data
-  yield* document.bulk.write(db, [
+  yield* document.bulk(db, [
     { category: "fruit", name: "Apple", price: 1.5 },
     { category: "fruit", name: "Banana", price: 0.75 },
     { category: "vegetable", name: "Carrot", price: 2.0 },

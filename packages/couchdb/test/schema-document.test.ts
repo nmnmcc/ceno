@@ -1,4 +1,5 @@
-import { Document, LocalDocument, SchemaDocument, SchemaLocalDocument, version } from "@ceno/core";
+import { Document, LocalDocument } from "@ceno/core";
+import { SchemaDocument, SchemaLocalDocument, version } from "@ceno/schema";
 import { describe, it } from "@effect/vitest";
 import { strictEqual } from "@effect/vitest/utils";
 import { Effect, Schema } from "effect";

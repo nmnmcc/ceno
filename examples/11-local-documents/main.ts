@@ -8,8 +8,9 @@
  *   yarn start
  */
 
-import { Database, LocalDocument, SchemaLocalDocument, version } from "@ceno/core";
+import { Database, LocalDocument } from "@ceno/core";
 import { CouchDbClient, layer } from "@ceno/couchdb";
+import { SchemaLocalDocument, version } from "@ceno/schema";
 import { Effect, Layer, Redacted, Schema } from "effect";
 import { FetchHttpClient } from "effect/unstable/http";
 

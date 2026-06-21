@@ -59,6 +59,7 @@ program.pipe(
 | Package                               | Description                                                                              |
 | ------------------------------------- | ---------------------------------------------------------------------------------------- |
 | [`@ceno/core`](./packages/core)       | Backend-agnostic service contracts, schemas, and errors                                  |
+| [`@ceno/schema`](./packages/schema)   | Schema-aware, version-migrating document operations built on `@ceno/core`                |
 | [`@ceno/couchdb`](./packages/couchdb) | CouchDB HTTP implementation — **[full API documentation](./packages/couchdb/README.md)** |
 
 ## Examples

@@ -26,7 +26,9 @@
 - **No cross-package or cross-folder re-exports** — a barrel file (`index.ts`) only re-exports from its own directory's modules, never from another package or a sibling/parent folder. Consumers import each package directly.
 - **No deep imports across folder boundaries** — when importing from another folder that has an `index.ts`, import from the barrel (e.g. `../libraries`), never from an internal file (e.g. `../libraries/version`). Within the same folder, import directly from siblings (existing rule: never from the directory's own `index.ts`).
 - **No `let`** — all bindings are `const`.
-- **Interface methods use method-signature syntax, not arrow-function properties** — write `name(args): Ret;`, not `readonly name: (args) => Ret;`. This applies to every function member of an `interface` (including nested object-literal members and generic interfaces). Function overloads use repeated method signatures (`name(a): A; name(b): B;`), not an object-literal of call signatures (`readonly name: { (a): A; (b): B }`). Non-function `readonly` properties (values, sub-service objects, data fields) keep `readonly`.
+- **Interface methods use method-signature syntax, not arrow-function properties** — write `name(args): Ret;`, not `readonly name: (args) => Ret;`. This applies to every function member of an `interface` (including nested object-literal members and generic interfaces). Non-function `readonly` properties (values, sub-service objects, data fields) keep `readonly`.
+- **No function overloads — keep the API flat, nano-style** — never give a service method more than one overload signature. Give each variant its own name instead: `list`/`listStream`, `find`/`findStream`, `view`/`viewPost`/`viewStream`, `search`/`searchStream`, `changes`/`changesPost`/`changesStream`, `info`/`dbsInfo`/`dbsInfoPost`. This matches the `nano` CouchDB client. The CouchDB layer then wires each name to one endpoint directly, with no `Match` dispatch and no `as never` bridge.
+- **No grouped sub-objects for operation families — keep methods flat** — do not nest related operations under a sub-object (`bulk.write`, `index.create`, `attachment.insert`, `partition.info`, `security.get`, `revs.limit.get`, `session.login`, `render.show`). Use flat method names: `bulk`/`bulkGet`, `createIndex`/`listIndexes`/`deleteIndex`, `attachmentInsert`/`attachmentGet`/`attachmentExists`/`attachmentDestroy`, `partitionInfo`/`partitionedList`/`partitionedFind`, `getSecurity`/`setSecurity`, `getRevsLimit`/`setRevsLimit`, `auth`/`session`/`logout`, `show`/`updateHandler`/`viewWithList`. The one allowed object-returning method is `in(db)`, which returns a database-scoped view of the same flat methods (the `db` argument dropped).
 - **TSDoc must tell the reader what feature the code serves** — every export gets a `/** ... */` explaining its product purpose. A reader should never have to reverse-engineer _why_ code exists from the implementation alone. Good: _"Lets users find pages by title within a workspace."_ Bad: _"Implements search CRUD."_ — the second just restates the class name. Interface-layer comments describe what users can do; implementation-layer comments describe non-obvious strategy (e.g. _"on delete, children are re-parented"_). Skip TSDoc on trivial constants and barrel re-exports.
 
 ## ceno
@@ -42,8 +44,8 @@ Yarn workspaces monorepo. Shared tooling (TypeScript, Prettier, effect-tsgo) liv
 ```
 packages/
   core/          — @ceno/core, backend-agnostic service interfaces, schemas, errors, stream helpers
+  schema/        — @ceno/schema, schema-aware version-migrating document operations built on @ceno/core
   couchdb/       — @ceno/couchdb, the CouchDB HTTP implementation (layers) of the @ceno/core services
-  version/       — @ceno/version, schema versioning & migration helpers
 ```
 
 ### Structure
@@ -59,17 +61,24 @@ src/
     document.ts            — document schemas + Document service contract
     design-document.ts     — design-doc schemas + DesignDocument service contract
     local-document.ts      — LocalDocument service contract (reuses document schemas)
-    schema-document.ts     — SchemaDocument: version-migrating typed document operations
-    schema-local-document.ts — SchemaLocalDocument: version-migrating typed local document operations
     index.ts               — barrel re-exports for services/
   libraries/
     stream.ts              — NDJSON stream parsing helper
-    version.ts             — schema versioning & migration
     index.ts               — barrel re-exports for libraries/
   index.ts                 — barrel re-exports (services + libraries)
 ```
 
 Each domain file is self-contained: its response/param schemas and its `Context.Service` tag + interface live together (contracts only, no implementation).
+
+`@ceno/schema` — schema-aware document operations built on top of `@ceno/core`. These are not service contracts and not pure libraries: each is a `make` factory that combines a `@ceno/core` service (`Document` / `LocalDocument`) with the version chain to give typed operations that encode on writes and migrate on reads. It depends on `@ceno/core` (a `peerDependency`, per the contract rule).
+
+```
+src/
+  version.ts             — version chain primitives & schema migration (the version/migrate/toSchema API)
+  document.ts            — SchemaDocument: version-migrating typed document operations
+  local-document.ts      — SchemaLocalDocument: version-migrating typed local document operations
+  index.ts               — barrel re-exports
+```
 
 `@ceno/couchdb` — CouchDB HTTP implementation of the `@ceno/core` services. Mirrors `@ceno/core`'s per-domain file layout; each domain file holds both its standalone `HttpApi` definition and its `@ceno/core` service `Layer`:
 

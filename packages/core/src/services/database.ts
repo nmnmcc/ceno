@@ -239,14 +239,18 @@ export namespace Database {
       options?: DatabaseListParams,
     ): Effect.Effect<readonly string[], CenoUnauthorized | CenoForbidden | TransportError>;
 
-    /** Retrieves metadata for one or more databases. */
+    /** Retrieves metadata for a single database. */
     info(
       name: string,
     ): Effect.Effect<DatabaseGetResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
-    info(
+
+    /** Retrieves metadata for multiple databases in a single request. */
+    dbsInfo(
       options?: DatabaseListParams,
     ): Effect.Effect<DbsInfoResponse, CenoUnauthorized | CenoForbidden | TransportError>;
-    info(
+
+    /** Retrieves metadata for specific databases given by name. */
+    dbsInfoPost(
       keys: readonly string[],
     ): Effect.Effect<DbsInfoResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
 
@@ -264,39 +268,35 @@ export namespace Database {
       name: string,
     ): Effect.Effect<void, CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | TransportError>;
 
-    readonly security: {
-      /** Retrieves the database security object. */
-      get(name: string): Effect.Effect<SecurityObject, CenoUnauthorized | CenoForbidden | TransportError>;
-      /** Sets the database security object. */
-      set(
-        name: string,
-        security: SecurityObject,
-      ): Effect.Effect<OkResponse, CenoUnauthorized | CenoForbidden | TransportError>;
-    };
+    /** Retrieves the database security object. */
+    getSecurity(name: string): Effect.Effect<SecurityObject, CenoUnauthorized | CenoForbidden | TransportError>;
 
-    readonly revs: {
-      readonly limit: {
-        /** Retrieves the current revision limit for the database. */
-        get(name: string): Effect.Effect<number, CenoUnauthorized | CenoForbidden | TransportError>;
-        /** Sets the revision limit for the database. */
-        set(
-          name: string,
-          limit: number,
-        ): Effect.Effect<OkResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
-      };
+    /** Sets the database security object. */
+    setSecurity(
+      name: string,
+      security: SecurityObject,
+    ): Effect.Effect<OkResponse, CenoUnauthorized | CenoForbidden | TransportError>;
 
-      /** Finds document revisions not present in the database. */
-      missing(
-        name: string,
-        body: unknown,
-      ): Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+    /** Retrieves the current revision limit for the database. */
+    getRevsLimit(name: string): Effect.Effect<number, CenoUnauthorized | CenoForbidden | TransportError>;
 
-      /** Returns the subset of revisions that do not correspond to revisions stored in the database. */
-      diff(
-        name: string,
-        body: unknown,
-      ): Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
-    };
+    /** Sets the revision limit for the database. */
+    setRevsLimit(
+      name: string,
+      limit: number,
+    ): Effect.Effect<OkResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+
+    /** Finds document revisions not present in the database. */
+    missingRevs(
+      name: string,
+      body: unknown,
+    ): Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+
+    /** Returns the subset of revisions that do not correspond to revisions stored in the database. */
+    revsDiff(
+      name: string,
+      body: unknown,
+    ): Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
 
     /** Permanently removes references to specified document revisions. */
     purge(
@@ -307,15 +307,14 @@ export namespace Database {
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | CenoInternalServerError | TransportError
     >;
 
-    readonly purgedInfosLimit: {
-      /** Retrieves the current purged infos limit. */
-      get(name: string): Effect.Effect<number, CenoUnauthorized | CenoForbidden | TransportError>;
-      /** Sets the purged infos limit. */
-      set(
-        name: string,
-        limit: number,
-      ): Effect.Effect<OkResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
-    };
+    /** Retrieves the current purged infos limit. */
+    getPurgedInfosLimit(name: string): Effect.Effect<number, CenoUnauthorized | CenoForbidden | TransportError>;
+
+    /** Sets the purged infos limit. */
+    setPurgedInfosLimit(
+      name: string,
+      limit: number,
+    ): Effect.Effect<OkResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
 
     /** Starts a replication between two databases. */
     replicate(
@@ -330,19 +329,21 @@ export namespace Database {
       name: string,
       options?: DatabaseChangesParams,
     ): Effect.Effect<DatabaseChangesResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Streams parsed change events from the continuous changes feed. */
-    changes(
+
+    /** Retrieves the changes feed, filtered by an explicit set of document IDs or a selector in the request body. */
+    changesPost(
       name: string,
-      options: DatabaseChangesParams & { stream: true },
+      body: unknown,
+    ): Effect.Effect<DatabaseChangesResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+
+    /** Streams parsed change events from the continuous changes feed. */
+    changesStream(
+      name: string,
+      options?: DatabaseChangesParams,
     ): Effect.Effect<
       Stream.Stream<DatabaseChangesResultItem, HttpClientError.HttpClientError | Schema.SchemaError>,
       TransportError
     >;
-    /** Retrieves the changes feed, filtered by an explicit set of document IDs or a selector. */
-    changes(
-      name: string,
-      options: { body: unknown },
-    ): Effect.Effect<DatabaseChangesResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
 
     /** Retrieves global database update events. */
     updates(

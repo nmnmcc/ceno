@@ -2,7 +2,7 @@
 # Manual changes might be lost - proceed with caution!
 
 __metadata:
-  version: 10
+  version: 9
   cacheKey: 10c0
 
 "@babel/code-frame@npm:^7.29.7":
@@ -157,6 +157,8 @@ __metadata:
 "@ceno/couchdb@workspace:^, @ceno/couchdb@workspace:packages/couchdb":
   version: 0.0.0-use.local
   resolution: "@ceno/couchdb@workspace:packages/couchdb"
+  dependencies:
+    "@ceno/schema": "workspace:^"
   peerDependencies:
     "@ceno/core": "workspace:^"
     effect: ^4.0.0-beta.84
@@ -239,6 +241,7 @@ __metadata:
   dependencies:
     "@ceno/core": "workspace:^"
     "@ceno/couchdb": "workspace:^"
+    "@ceno/schema": "workspace:^"
     effect: "npm:^4.0.0-beta.84"
   languageName: unknown
   linkType: soft
@@ -249,6 +252,7 @@ __metadata:
   dependencies:
     "@ceno/core": "workspace:^"
     "@ceno/couchdb": "workspace:^"
+    "@ceno/schema": "workspace:^"
     effect: "npm:^4.0.0-beta.84"
   languageName: unknown
   linkType: soft
@@ -269,7 +273,17 @@ __metadata:
   dependencies:
     "@ceno/core": "workspace:^"
     "@ceno/couchdb": "workspace:^"
+    "@ceno/schema": "workspace:^"
     effect: "npm:^4.0.0-beta.84"
+  languageName: unknown
+  linkType: soft
+
+"@ceno/schema@workspace:^, @ceno/schema@workspace:packages/schema":
+  version: 0.0.0-use.local
+  resolution: "@ceno/schema@workspace:packages/schema"
+  peerDependencies:
+    "@ceno/core": "workspace:^"
+    effect: ^4.0.0-beta.84
   languageName: unknown
   linkType: soft
 

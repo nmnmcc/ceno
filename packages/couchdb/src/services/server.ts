@@ -51,11 +51,9 @@ export namespace CouchDbServer {
       return Server.of({
         info: client.info(),
         uuids: (opts) => client.uuids({ query: { count: opts?.count } }),
-        session: {
-          current: client.session(),
-          login: (creds) => client.auth({ payload: creds }),
-          logout: client.logout(),
-        },
+        auth: (creds) => client.auth({ payload: creds }),
+        session: client.session(),
+        logout: client.logout(),
       });
     }),
   );

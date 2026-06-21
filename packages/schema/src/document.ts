@@ -1,8 +1,11 @@
-import { Effect, Schema } from "effect";
-
-import { migrate, toSchema, type MigrateError, type Version } from "../libraries/version";
 import {
   Document,
+  type CenoBadRequest,
+  type CenoConflict,
+  type CenoForbidden,
+  type CenoInternalServerError,
+  type CenoNotFound,
+  type CenoUnauthorized,
   type DocumentBulkResponse,
   type DocumentGetParams,
   type DocumentInsertParams,
@@ -10,16 +13,11 @@ import {
   type DocumentPutParams,
   type MangoQuery,
   type MangoResponse,
-} from "./document";
-import type {
-  CenoBadRequest,
-  CenoConflict,
-  CenoForbidden,
-  CenoInternalServerError,
-  CenoNotFound,
-  CenoUnauthorized,
-  TransportError,
-} from "./errors";
+  type TransportError,
+} from "@ceno/core";
+import { Effect, Schema } from "effect";
+
+import { migrate, toSchema, type MigrateError, type Version } from "./version";
 
 // ---------------------------------------------------------------------------
 // Namespace
@@ -200,7 +198,7 @@ export namespace SchemaDocument {
             })),
           ),
         bulk: (d, docs) =>
-          Effect.flatMap(Effect.all(docs.map((doc) => encode(doc))), (encoded) => document.bulk.write(d, encoded)),
+          Effect.flatMap(Effect.all(docs.map((doc) => encode(doc))), (encoded) => document.bulk(d, encoded)),
       };
 
       return {

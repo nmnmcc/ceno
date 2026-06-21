@@ -137,7 +137,7 @@ describe("Database", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const db = yield* Database;
-        const result = yield* db.info([name]);
+        const result = yield* db.dbsInfoPost([name]);
         strictEqual(result.length, 1);
         strictEqual(result[0]!.key, name);
         strictEqual(result[0]!.info !== null, true);
@@ -152,7 +152,7 @@ describe("Database", () => {
       const name2 = uniqueDb();
       yield* db.create(name1);
       yield* db.create(name2);
-      const result = yield* db.info([name1, name2]);
+      const result = yield* db.dbsInfoPost([name1, name2]);
       strictEqual(result.length, 2);
       const keys = result.map((r) => r.key).sort();
       strictEqual(keys[0], [name1, name2].sort()[0]);
@@ -203,7 +203,7 @@ describe("Database", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const db = yield* Database;
-        const security = yield* db.security.get(name);
+        const security = yield* db.getSecurity(name);
         strictEqual(typeof security, "object");
       }),
     ).pipe(Effect.provide(TestLayer)),
@@ -217,9 +217,9 @@ describe("Database", () => {
           admins: { names: ["admin"], roles: ["_admin"] },
           members: { names: [], roles: [] },
         };
-        const setResult = yield* db.security.set(name, securityDoc);
+        const setResult = yield* db.setSecurity(name, securityDoc);
         strictEqual(setResult.ok, true);
-        const got = yield* db.security.get(name);
+        const got = yield* db.getSecurity(name);
         strictEqual(got.admins?.names?.[0], "admin");
         strictEqual(got.admins?.roles?.[0], "_admin");
         strictEqual(got.members?.names?.length, 0);
@@ -234,7 +234,7 @@ describe("Database", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const db = yield* Database;
-        const limit = yield* db.revs.limit.get(name);
+        const limit = yield* db.getRevsLimit(name);
         strictEqual(limit, 1000);
       }),
     ).pipe(Effect.provide(TestLayer)),
@@ -244,9 +244,9 @@ describe("Database", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const db = yield* Database;
-        const result = yield* db.revs.limit.set(name, 500);
+        const result = yield* db.setRevsLimit(name, 500);
         strictEqual(result.ok, true);
-        const limit = yield* db.revs.limit.get(name);
+        const limit = yield* db.getRevsLimit(name);
         strictEqual(limit, 500);
       }),
     ).pipe(Effect.provide(TestLayer)),
@@ -278,7 +278,7 @@ describe("Database", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const db = yield* Database;
-        const limit = yield* db.purgedInfosLimit.get(name);
+        const limit = yield* db.getPurgedInfosLimit(name);
         strictEqual(typeof limit, "number");
         strictEqual(limit > 0, true);
       }),
@@ -289,9 +289,9 @@ describe("Database", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const db = yield* Database;
-        const result = yield* db.purgedInfosLimit.set(name, 500);
+        const result = yield* db.setPurgedInfosLimit(name, 500);
         strictEqual(result.ok, true);
-        const limit = yield* db.purgedInfosLimit.get(name);
+        const limit = yield* db.getPurgedInfosLimit(name);
         strictEqual(limit, 500);
       }),
     ).pipe(Effect.provide(TestLayer)),
@@ -303,7 +303,7 @@ describe("Database", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const db = yield* Database;
-        const result = (yield* db.revs.missing(name, { "missing-doc": ["1-abc"] })) as {
+        const result = (yield* db.missingRevs(name, { "missing-doc": ["1-abc"] })) as {
           missing_revs: Record<string, string[]>;
         };
         strictEqual(typeof result.missing_revs, "object");
@@ -316,7 +316,7 @@ describe("Database", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const db = yield* Database;
-        const result = (yield* db.revs.diff(name, { "unknown-doc": ["1-xyz"] })) as Record<
+        const result = (yield* db.revsDiff(name, { "unknown-doc": ["1-xyz"] })) as Record<
           string,
           { missing: string[] }
         >;
@@ -407,7 +407,7 @@ describe("Database", () => {
         yield* doc.put(name, "s1", { x: 1 });
 
         const db = yield* Database;
-        const stream = yield* db.changes(name, { stream: true });
+        const stream = yield* db.changesStream(name);
         strictEqual(typeof stream, "object");
       }),
     ).pipe(Effect.provide(TestLayer)),
@@ -447,7 +447,7 @@ describe("Database", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const db = yield* Database;
-        const result = yield* db.info();
+        const result = yield* db.dbsInfo();
         strictEqual(result.length > 0, true);
         const found = result.find((item) => item.key === name);
         strictEqual(found !== undefined, true);
@@ -479,7 +479,7 @@ describe("Database", () => {
         yield* doc.put(name, "stream-doc", { x: 1 });
 
         const db = yield* Database;
-        const stream = yield* db.changes(name, { feed: "continuous", stream: true });
+        const stream = yield* db.changesStream(name, { feed: "continuous" });
         const items = yield* stream.pipe(Stream.take(1), Stream.runCollect);
         strictEqual(items.length, 1);
         strictEqual(items[0]!.id, "stream-doc");

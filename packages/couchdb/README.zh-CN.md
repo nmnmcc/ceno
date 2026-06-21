@@ -15,12 +15,14 @@ npm install @ceno/core @ceno/couchdb effect
 - [Server 函数](#server-函数)
   - [server.info](#serverinfo)
   - [server.uuids([options])](#serveruuidsoptions)
-  - [server.session.login(credentials)](#serversessionlogincredentials)
-  - [server.session.current](#serversessioncurrent)
-  - [server.session.logout](#serversessionlogout)
+  - [server.auth(credentials)](#serverauthcredentials)
+  - [server.session](#serversession)
+  - [server.logout](#serverlogout)
 - [Database 函数](#database-函数)
   - [database.create(name, [options])](#databasecreatename-options)
   - [database.info(name)](#databaseinfoname)
+  - [database.dbsInfo([options])](#databasedbsinfooptions)
+  - [database.dbsInfoPost(keys)](#databasedbsinfopostkeys)
   - [database.exists(name)](#databaseexistsname)
   - [database.destroy(name)](#databasedestroyname)
   - [database.list([options])](#databaselistoptions)
@@ -29,48 +31,48 @@ npm install @ceno/core @ceno/couchdb effect
   - [database.replicate(options)](#databasereplicateoptions)
   - [database.changes(name, [options])](#databasechangesname-options)
   - [database.updates([options])](#databaseupdatesoptions)
-  - [database.security.get(name)](#databasesecuritygetname)
-  - [database.security.set(name, security)](#databasesecuritysetname-security)
-  - [database.revs.limit.get(name)](#databaserevslimitgetname)
-  - [database.revs.limit.set(name, limit)](#databaserevslimitsetname-limit)
-  - [database.revs.missing(name, body)](#databaserevsmissingname-body)
-  - [database.revs.diff(name, body)](#databaserevsdiffname-body)
+  - [database.getSecurity(name)](#databasegetsecurityname)
+  - [database.setSecurity(name, security)](#databasesetsecurityname-security)
+  - [database.getRevsLimit(name)](#databasegetrevslimitname)
+  - [database.setRevsLimit(name, limit)](#databasesetrevslimitname-limit)
+  - [database.missingRevs(name, body)](#databasemissingrevsname-body)
+  - [database.revsDiff(name, body)](#databaserevsdiffname-body)
   - [database.purge(name, body)](#databasepurgename-body)
-  - [database.purgedInfosLimit.get(name)](#databasepurgedinfoslimitgetname)
-  - [database.purgedInfosLimit.set(name, limit)](#databasepurgedinfoslimitsetname-limit)
+  - [database.getPurgedInfosLimit(name)](#databasegetpurgedinfoslimitname)
+  - [database.setPurgedInfosLimit(name, limit)](#databasesetpurgedinfoslimitname-limit)
 - [Document 函数](#document-函数)
   - [document.insert(db, body, [options])](#documentinsertdb-body-options)
   - [document.put(db, docid, body, [options])](#documentputdb-docid-body-options)
   - [document.get(db, docid, [options])](#documentgetdb-docid-options)
   - [document.exists(db, docid)](#documentexistsdb-docid)
   - [document.destroy(db, docid, rev, [options])](#documentdestroydb-docid-rev-options)
-  - [document.bulk.write(db, docs)](#documentbulkwritedb-docs)
-  - [document.bulk.get(db, docs)](#documentbulkgetdb-docs)
+  - [document.bulk(db, docs)](#documentbulkdb-docs)
+  - [document.bulkGet(db, docs)](#documentbulkgetdb-docs)
   - [document.list(db, [options])](#documentlistdb-options)
   - [document.fetch(db, keys, [options])](#documentfetchdb-keys-options)
   - [document.find(db, query)](#documentfinddb-query)
-  - [document.index.create(db, index)](#documentindexcreatedb-index)
-  - [document.index.delete(db, ddoc, name)](#documentindexdeletedb-ddoc-name)
-  - [document.index.list(db)](#documentindexlistdb)
+  - [document.createIndex(db, index)](#documentcreateindexdb-index)
+  - [document.deleteIndex(db, ddoc, name)](#documentdeleteindexdb-ddoc-name)
+  - [document.listIndexes(db)](#documentlistindexesdb)
   - [document.explain(db, query)](#documentexplaindb-query)
 - [Attachment 函数](#attachment-函数)
-  - [document.attachment.insert(db, docid, attname, data, [options])](#documentattachmentinsertdb-docid-attname-data-options)
-  - [document.attachment.get(db, docid, attname, [options])](#documentattachmentgetdb-docid-attname-options)
-  - [document.attachment.exists(db, docid, attname)](#documentattachmentexistsdb-docid-attname)
-  - [document.attachment.destroy(db, docid, attname, rev, [options])](#documentattachmentdestroydb-docid-attname-rev-options)
+  - [document.attachmentInsert(db, docid, attname, data, [options])](#documentattachmentinsertdb-docid-attname-data-options)
+  - [document.attachmentGet(db, docid, attname, [options])](#documentattachmentgetdb-docid-attname-options)
+  - [document.attachmentExists(db, docid, attname)](#documentattachmentexistsdb-docid-attname)
+  - [document.attachmentDestroy(db, docid, attname, rev, [options])](#documentattachmentdestroydb-docid-attname-rev-options)
 - [DesignDocument 函数](#designdocument-函数)
   - [designDocument.info(db, ddoc)](#designdocumentinfodb-ddoc)
   - [designDocument.view(db, ddoc, viewname, [options])](#designdocumentviewdb-ddoc-viewname-options)
   - [designDocument.search(db, ddoc, index, [options])](#designdocumentsearchdb-ddoc-index-options)
-  - [designDocument.render.show(db, ddoc, func, docid)](#designdocumentrendershowdb-ddoc-func-docid)
-  - [designDocument.render.update(db, ddoc, func, docid, body)](#designdocumentrenderupdatedb-ddoc-func-docid-body)
-  - [designDocument.render.list(db, ddoc, list, viewname, [options])](#designdocumentrenderlistdb-ddoc-list-viewname-options)
+  - [designDocument.show(db, ddoc, func, docid)](#designdocumentshowdb-ddoc-func-docid)
+  - [designDocument.updateHandler(db, ddoc, func, docid, body)](#designdocumentupdatehandlerdb-ddoc-func-docid-body)
+  - [designDocument.viewWithList(db, ddoc, list, viewname, [options])](#designdocumentviewwithlistdb-ddoc-list-viewname-options)
 - [分区函数](#分区函数)
-  - [document.partition.info(db, partition)](#documentpartitioninfodb-partition)
-  - [document.partition.list(db, partition, [options])](#documentpartitionlistdb-partition-options)
-  - [document.partition.find(db, partition, query)](#documentpartitionfinddb-partition-query)
-  - [designDocument.partition.view(db, partition, ddoc, viewname, [options])](#designdocumentpartitionviewdb-partition-ddoc-viewname-options)
-  - [designDocument.partition.search(db, partition, ddoc, index, [options])](#designdocumentpartitionsearchdb-partition-ddoc-index-options)
+  - [document.partitionInfo(db, partition)](#documentpartitioninfodb-partition)
+  - [document.partitionedList(db, partition, [options])](#documentpartitionedlistdb-partition-options)
+  - [document.partitionedFind(db, partition, query)](#documentpartitionedfinddb-partition-query)
+  - [designDocument.partitionedView(db, partition, ddoc, viewname, [options])](#designdocumentpartitionedviewdb-partition-ddoc-viewname-options)
+  - [designDocument.partitionedSearch(db, partition, ddoc, index, [options])](#designdocumentpartitionedsearchdb-partition-ddoc-index-options)
 - [LocalDocument 函数](#localdocument-函数)
   - [localDocument.get(db, docid)](#localdocumentgetdb-docid)
   - [localDocument.exists(db, docid)](#localdocumentexistsdb-docid)
@@ -195,30 +197,30 @@ const { uuids } = yield * server.uuids({ count: 3 });
 // ['6e1295ed6c29495e54cc05947f18c8af', ...]
 ```
 
-### server.session.login(credentials)
+### server.auth(credentials)
 
 通过 Cookie 会话进行认证（`POST /_session`）：
 
 ```typescript
-const response = yield * server.session.login({ name: "admin", password: "password" });
+const response = yield * server.auth({ name: "admin", password: "password" });
 // { ok: true, name: 'admin', roles: ['_admin'] }
 ```
 
-### server.session.current
+### server.session
 
 获取当前会话信息（`GET /_session`）：
 
 ```typescript
-const session = yield * server.session.current;
+const session = yield * server.session;
 // { ok: true, userCtx: { name: 'admin', roles: ['_admin'] }, info: { ... } }
 ```
 
-### server.session.logout
+### server.logout
 
 关闭当前会话（`DELETE /_session`）：
 
 ```typescript
-yield * server.session.logout;
+yield * server.logout;
 ```
 
 ## Database 函数
@@ -236,18 +238,27 @@ yield * database.create("alice", { n: 3, partitioned: true });
 
 ### database.info(name)
 
-获取数据库元数据（`GET /{db}`）。此方法有多个重载：
+获取单个数据库的元数据（`GET /{db}`）：
 
 ```typescript
-// 传入字符串——获取单个数据库的元数据
 const info = yield * database.info("alice");
 // { db_name: 'alice', doc_count: 42, ... }
+```
 
-// 传入字符串数组——获取多个数据库的元数据（`POST /_dbs_info`）
-const infos = yield * database.info(["alice", "bob"]);
+### database.dbsInfo([options])
 
-// 传入 options（或不传参）——列出多个数据库的元数据（`GET /_dbs_info`）
-const all = yield * database.info();
+列出多个数据库的元数据（`GET /_dbs_info`）：
+
+```typescript
+const all = yield * database.dbsInfo();
+```
+
+### database.dbsInfoPost(keys)
+
+获取多个数据库的元数据（`POST /_dbs_info`）：
+
+```typescript
+const infos = yield * database.dbsInfoPost(["alice", "bob"]);
 ```
 
 ### database.exists(name)
@@ -327,15 +338,14 @@ const changes =
   });
 ```
 
-传入 `stream: true` 可返回连续变更源的解析变更项流：
+使用专用的 `database.changesStream` 方法可返回连续变更源的解析变更项流：
 
 ```typescript
 const stream =
   yield *
-  database.changes("alice", {
+  database.changesStream("alice", {
     feed: "continuous",
     include_docs: true,
-    stream: true,
   });
 ```
 
@@ -347,62 +357,62 @@ const stream =
 const updates = yield * database.updates();
 ```
 
-### database.security.get(name)
+### database.getSecurity(name)
 
 获取数据库安全对象（`GET /{db}/_security`）：
 
 ```typescript
-const security = yield * database.security.get("alice");
+const security = yield * database.getSecurity("alice");
 ```
 
-### database.security.set(name, security)
+### database.setSecurity(name, security)
 
 设置数据库安全对象（`PUT /{db}/_security`）：
 
 ```typescript
 yield *
-  database.security.set("alice", {
+  database.setSecurity("alice", {
     admins: { names: ["admin"], roles: [] },
     members: { names: [], roles: ["reader"] },
   });
 ```
 
-### database.revs.limit.get(name)
+### database.getRevsLimit(name)
 
 获取当前修订版本限制（`GET /{db}/_revs_limit`）：
 
 ```typescript
-const limit = yield * database.revs.limit.get("alice");
+const limit = yield * database.getRevsLimit("alice");
 ```
 
-### database.revs.limit.set(name, limit)
+### database.setRevsLimit(name, limit)
 
 设置修订版本限制（`PUT /{db}/_revs_limit`）：
 
 ```typescript
-yield * database.revs.limit.set("alice", 500);
+yield * database.setRevsLimit("alice", 500);
 ```
 
-### database.revs.missing(name, body)
+### database.missingRevs(name, body)
 
 查找数据库中不存在的文档修订版本（`POST /{db}/_missing_revs`）：
 
 ```typescript
 const result =
   yield *
-  database.revs.missing("alice", {
+  database.missingRevs("alice", {
     rabbit: ["1-abc", "2-def"],
   });
 ```
 
-### database.revs.diff(name, body)
+### database.revsDiff(name, body)
 
 返回不对应于数据库中已存修订版本的子集（`POST /{db}/_revs_diff`）：
 
 ```typescript
 const result =
   yield *
-  database.revs.diff("alice", {
+  database.revsDiff("alice", {
     rabbit: ["1-abc", "2-def"],
   });
 ```
@@ -418,20 +428,20 @@ yield *
   });
 ```
 
-### database.purgedInfosLimit.get(name)
+### database.getPurgedInfosLimit(name)
 
 获取当前 purged infos 限制（`GET /{db}/_purged_infos_limit`）：
 
 ```typescript
-const limit = yield * database.purgedInfosLimit.get("alice");
+const limit = yield * database.getPurgedInfosLimit("alice");
 ```
 
-### database.purgedInfosLimit.set(name, limit)
+### database.setPurgedInfosLimit(name, limit)
 
 设置 purged infos 限制（`PUT /{db}/_purged_infos_limit`）：
 
 ```typescript
-yield * database.purgedInfosLimit.set("alice", 1000);
+yield * database.setPurgedInfosLimit("alice", 1000);
 ```
 
 ## Document 函数
@@ -494,25 +504,25 @@ const isPresent = yield * document.exists("alice", "rabbit");
 const response = yield * document.destroy("alice", "rabbit", "3-66c01cdf99e84c83a9b3fe65b88db8c0");
 ```
 
-### document.bulk.write(db, docs)
+### document.bulk(db, docs)
 
 批量插入/更新/删除（`POST /{db}/_bulk_docs`）：
 
 ```typescript
 const results =
   yield *
-  document.bulk.write("alice", [
+  document.bulk("alice", [
     { _id: "rabbit", happy: true },
     { _id: "hatter", mad: true },
   ]);
 ```
 
-### document.bulk.get(db, docs)
+### document.bulkGet(db, docs)
 
 在单次请求中按 ID 和可选修订版本获取多个文档（`POST /{db}/_bulk_get`）：
 
 ```typescript
-const results = yield * document.bulk.get("alice", [{ id: "rabbit" }, { id: "hatter", rev: "2-abc" }]);
+const results = yield * document.bulkGet("alice", [{ id: "rabbit" }, { id: "hatter", rev: "2-abc" }]);
 ```
 
 ### document.list(db, [options])
@@ -526,10 +536,10 @@ result.rows.forEach((row) => {
 });
 ```
 
-传入 `stream: true` 可返回解码文本流，用于处理大型结果集：
+使用专用的 `document.listStream` 方法可返回解码文本流，用于处理大型结果集：
 
 ```typescript
-const stream = yield * document.list("alice", { include_docs: true, stream: true });
+const stream = yield * document.listStream("alice", { include_docs: true });
 ```
 
 ### document.fetch(db, keys, [options])
@@ -557,44 +567,43 @@ const result =
   });
 ```
 
-传入 `stream: true` 可返回解码文本流：
+使用专用的 `document.findStream` 方法可返回解码文本流：
 
 ```typescript
 const stream =
   yield *
-  document.find("alice", {
+  document.findStream("alice", {
     selector: { name: { $eq: "Brian" } },
-    stream: true,
   });
 ```
 
-### document.index.create(db, index)
+### document.createIndex(db, index)
 
 创建 Mango 索引（`POST /{db}/_index`）：
 
 ```typescript
 const response =
   yield *
-  document.index.create("alice", {
+  document.createIndex("alice", {
     index: { fields: ["name"] },
     name: "name-index",
   });
 ```
 
-### document.index.delete(db, ddoc, name)
+### document.deleteIndex(db, ddoc, name)
 
 删除 Mango 索引（`DELETE /{db}/_index/{ddoc}/json/{name}`）：
 
 ```typescript
-yield * document.index.delete("alice", "_design/name-index", "name-index");
+yield * document.deleteIndex("alice", "_design/name-index", "name-index");
 ```
 
-### document.index.list(db)
+### document.listIndexes(db)
 
 列出所有 Mango 索引（`GET /{db}/_index`）：
 
 ```typescript
-const result = yield * document.index.list("alice");
+const result = yield * document.listIndexes("alice");
 ```
 
 ### document.explain(db, query)
@@ -611,36 +620,36 @@ const plan =
 
 ## Attachment 函数
 
-### document.attachment.insert(db, docid, attname, data, [options])
+### document.attachmentInsert(db, docid, attname, data, [options])
 
 上传附件（`PUT /{db}/{docid}/{attname}`）：
 
 ```typescript
-const response = yield * document.attachment.insert("alice", "rabbit", "picture.png", imageData, { rev: "1-abc" });
+const response = yield * document.attachmentInsert("alice", "rabbit", "picture.png", imageData, { rev: "1-abc" });
 ```
 
-### document.attachment.get(db, docid, attname, [options])
+### document.attachmentGet(db, docid, attname, [options])
 
 以字节流下载附件（`GET /{db}/{docid}/{attname}`）：
 
 ```typescript
-const stream = yield * document.attachment.get("alice", "rabbit", "picture.png");
+const stream = yield * document.attachmentGet("alice", "rabbit", "picture.png");
 ```
 
-### document.attachment.exists(db, docid, attname)
+### document.attachmentExists(db, docid, attname)
 
 检查附件是否存在（`HEAD /{db}/{docid}/{attname}`）。返回布尔值——存在为 `true`，不存在为 `false`：
 
 ```typescript
-const isPresent = yield * document.attachment.exists("alice", "rabbit", "picture.png");
+const isPresent = yield * document.attachmentExists("alice", "rabbit", "picture.png");
 ```
 
-### document.attachment.destroy(db, docid, attname, rev, [options])
+### document.attachmentDestroy(db, docid, attname, rev, [options])
 
 删除附件（`DELETE /{db}/{docid}/{attname}`）：
 
 ```typescript
-yield * document.attachment.destroy("alice", "rabbit", "picture.png", "2-def");
+yield * document.attachmentDestroy("alice", "rabbit", "picture.png", "2-def");
 ```
 
 ## DesignDocument 函数
@@ -691,10 +700,10 @@ const result =
   });
 ```
 
-传入 `stream: true` 可返回解码文本流：
+使用专用的 `designDocument.viewStream` 方法可返回解码文本流：
 
 ```typescript
-const stream = yield * designDocument.view("alice", "characters", "happy_ones", { stream: true });
+const stream = yield * designDocument.viewStream("alice", "characters", "happy_ones");
 ```
 
 ### designDocument.search(db, ddoc, index, [options])
@@ -709,40 +718,39 @@ const result =
   });
 ```
 
-传入 `stream: true` 可返回解码文本流：
+使用专用的 `designDocument.searchStream` 方法可返回解码文本流：
 
 ```typescript
 const stream =
   yield *
-  designDocument.search("alice", "characters", "happy_ones", {
+  designDocument.searchStream("alice", "characters", "happy_ones", {
     q: "cat",
-    stream: true,
   });
 ```
 
-### designDocument.render.show(db, ddoc, func, docid)
+### designDocument.show(db, ddoc, func, docid)
 
 通过 show 函数渲染文档（`GET /{db}/_design/{ddoc}/_show/{func}/{docid}`）。在 CouchDB 3.0 中已弃用：
 
 ```typescript
-const result = yield * designDocument.render.show("alice", "characters", "format_doc", "rabbit");
+const result = yield * designDocument.show("alice", "characters", "format_doc", "rabbit");
 ```
 
-### designDocument.render.update(db, ddoc, func, docid, body)
+### designDocument.updateHandler(db, ddoc, func, docid, body)
 
 对文档应用 update handler（`PUT /{db}/_design/{ddoc}/_update/{func}/{docid}`）。在 CouchDB 3.0 中已弃用：
 
 ```typescript
 const result =
-  yield * designDocument.render.update("alice", "update", "inplace", "rabbit", { field: "happy", value: false });
+  yield * designDocument.updateHandler("alice", "update", "inplace", "rabbit", { field: "happy", value: false });
 ```
 
-### designDocument.render.list(db, ddoc, list, viewname, [options])
+### designDocument.viewWithList(db, ddoc, list, viewname, [options])
 
 对视图应用 list 函数（`GET /{db}/_design/{ddoc}/_list/{list}/{viewname}`）。在 CouchDB 3.0 中已弃用：
 
 ```typescript
-const result = yield * designDocument.render.list("alice", "characters", "my_list", "happy_ones");
+const result = yield * designDocument.viewWithList("alice", "characters", "my_list", "happy_ones");
 ```
 
 ## 分区函数
@@ -763,56 +771,56 @@ yield *
   });
 ```
 
-### document.partition.info(db, partition)
+### document.partitionInfo(db, partition)
 
 获取分区统计信息（`GET /{db}/_partition/{partition}`）：
 
 ```typescript
-const stats = yield * document.partition.info("my-partitioned-db", "canidae");
+const stats = yield * document.partitionInfo("my-partitioned-db", "canidae");
 ```
 
-### document.partition.list(db, partition, [options])
+### document.partitionedList(db, partition, [options])
 
 列出分区中的文档（`GET /{db}/_partition/{partition}/_all_docs`）：
 
 ```typescript
 const docs =
   yield *
-  document.partition.list("my-partitioned-db", "canidae", {
+  document.partitionedList("my-partitioned-db", "canidae", {
     include_docs: true,
     limit: 5,
   });
 ```
 
-### document.partition.find(db, partition, query)
+### document.partitionedFind(db, partition, query)
 
 在分区内执行 Mango 查询（`POST /{db}/_partition/{partition}/_find`）：
 
 ```typescript
 const result =
   yield *
-  document.partition.find("my-partitioned-db", "canidae", {
+  document.partitionedFind("my-partitioned-db", "canidae", {
     selector: { name: "Wolf" },
   });
 ```
 
-### designDocument.partition.view(db, partition, ddoc, viewname, [options])
+### designDocument.partitionedView(db, partition, ddoc, viewname, [options])
 
 在分区内查询视图（`GET /{db}/_partition/{partition}/_design/{ddoc}/_view/{viewname}`）：
 
 ```typescript
 const result =
-  yield * designDocument.partition.view("my-partitioned-db", "canidae", "view-ddoc", "by-name", { limit: 10 });
+  yield * designDocument.partitionedView("my-partitioned-db", "canidae", "view-ddoc", "by-name", { limit: 10 });
 ```
 
-### designDocument.partition.search(db, partition, ddoc, index, [options])
+### designDocument.partitionedSearch(db, partition, ddoc, index, [options])
 
 在分区内查询搜索索引。需要 Clouseau 插件：
 
 ```typescript
 const result =
   yield *
-  designDocument.partition.search("my-partitioned-db", "canidae", "search-ddoc", "search-index", { q: "name:'Wolf'" });
+  designDocument.partitionedSearch("my-partitioned-db", "canidae", "search-ddoc", "search-index", { q: "name:'Wolf'" });
 ```
 
 ## LocalDocument 函数
@@ -884,7 +892,8 @@ const result =
 以 Effect Schema 字段定义文档结构，然后用 `SchemaDocument.make` 创建类型化的文档访问器：
 
 ```typescript
-import { Document, SchemaDocument } from "@ceno/core";
+import { Document } from "@ceno/core";
+import { SchemaDocument } from "@ceno/schema";
 import { Effect, Schema } from "effect";
 
 const TodoFields = {
@@ -959,11 +968,11 @@ const program = Effect.gen(function* () {
 
 ### 数据库级别变体
 
-向 `SchemaDocument.make` 传入数据库名称，可以获得无需在每次调用时传入 `db` 的访问器：
+调用 `.in(db)` 可以获得无需在每次调用时传入 `db` 的访问器：
 
 ```typescript
 const program = Effect.gen(function* () {
-  const todos = yield* SchemaDocument.make(TodoFields, "mydb");
+  const todos = (yield* SchemaDocument.make(TodoFields)).in("mydb");
 
   yield* todos.put("todo-1", { title: "Buy milk", done: false });
   const todo = yield* todos.get("todo-1");
@@ -976,10 +985,10 @@ const program = Effect.gen(function* () {
 `SchemaLocalDocument` 以相同方式用于本地（不复制的）文档：
 
 ```typescript
-import { SchemaLocalDocument } from "@ceno/core";
+import { SchemaLocalDocument } from "@ceno/schema";
 
 const program = Effect.gen(function* () {
-  const configs = yield* SchemaLocalDocument.make({ checkpoint: Schema.String, lastSync: Schema.Number }, "mydb");
+  const configs = (yield* SchemaLocalDocument.make({ checkpoint: Schema.String, lastSync: Schema.Number })).in("mydb");
 
   yield* configs.insert("sync-state", { checkpoint: "abc", lastSync: 1719792000 });
   const state = yield* configs.get("sync-state");
@@ -1020,24 +1029,23 @@ const program = Effect.gen(function* () {
 
 ## 流式处理
 
-多个方法在传入 `stream: true` 时返回 Effect `Stream` 值，用于处理大型结果集而无需将所有数据加载到内存中：
+多个方法通过专用的 `…Stream` 方法返回 Effect `Stream` 值，用于处理大型结果集而无需将所有数据加载到内存中：
 
-- `database.changes(name, { ..., stream: true })` — 连续变更源（解析后的变更项流）
-- `document.list(db, { ..., stream: true })` — 所有文档（解码文本流）
-- `document.find(db, { ..., stream: true })` — Mango 查询结果（解码文本流）
-- `document.attachment.get` — 附件字节流
-- `designDocument.view(db, ddoc, viewname, { ..., stream: true })` — 视图结果（解码文本流）
-- `designDocument.search(db, ddoc, index, { ..., stream: true })` — 搜索结果（解码文本流）
+- `database.changesStream(name, options?)` — 连续变更源（解析后的变更项流）
+- `document.listStream(db, options?)` — 所有文档（解码文本流）
+- `document.findStream(db, query)` — Mango 查询结果（解码文本流）
+- `document.attachmentGet` — 附件字节流（始终为流）
+- `designDocument.viewStream(...)` — 视图结果（解码文本流）
+- `designDocument.searchStream(...)` — 搜索结果（解码文本流）
 
 ```typescript
 import { Stream } from "effect";
 
 const stream =
   yield *
-  database.changes("alice", {
+  database.changesStream("alice", {
     feed: "continuous",
     include_docs: true,
-    stream: true,
   });
 
 yield *

@@ -121,7 +121,7 @@ describe("DesignDocument", () => {
       Effect.gen(function* () {
         yield* setupDesignDoc(name);
         const ddoc = yield* DesignDocument;
-        const result = yield* ddoc.view(name, "test", "by_title", { keys: ["alpha"] });
+        const result = yield* ddoc.viewPost(name, "test", "by_title", { keys: ["alpha"] });
         strictEqual(result.rows.length, 1);
         strictEqual(result.rows[0]!.key, "alpha");
       }),
@@ -133,7 +133,7 @@ describe("DesignDocument", () => {
       Effect.gen(function* () {
         yield* setupDesignDoc(name);
         const ddoc = yield* DesignDocument;
-        const result = yield* ddoc.view(name, "test", "by_title", { keys: ["alpha", "beta"] });
+        const result = yield* ddoc.viewPost(name, "test", "by_title", { keys: ["alpha", "beta"] });
         strictEqual(result.rows.length, 2);
       }),
     ).pipe(Effect.provide(TestLayer)),
@@ -144,7 +144,7 @@ describe("DesignDocument", () => {
       Effect.gen(function* () {
         yield* setupDesignDoc(name);
         const ddoc = yield* DesignDocument;
-        const result = yield* ddoc.view(name, "test", "by_title", { keys: ["nonexistent"] });
+        const result = yield* ddoc.viewPost(name, "test", "by_title", { keys: ["nonexistent"] });
         strictEqual(result.rows.length, 0);
       }),
     ).pipe(Effect.provide(TestLayer)),
@@ -193,7 +193,7 @@ describe("DesignDocument", () => {
       Effect.gen(function* () {
         yield* setupDesignDoc(name);
         const ddoc = yield* DesignDocument;
-        const stream = yield* ddoc.view(name, "test", "by_title", { stream: true });
+        const stream = yield* ddoc.viewStream(name, "test", "by_title");
         const chunks = yield* Stream.runCollect(stream);
         const body = chunks.join("");
         strictEqual(body.includes("alpha"), true);
@@ -217,7 +217,7 @@ describe("DesignDocument", () => {
         yield* doc.put(name, "mydoc", { title: "Hello" });
 
         const ddoc = yield* DesignDocument;
-        const result = yield* ddoc.render.show(name, "showtest", "simple", "mydoc");
+        const result = yield* ddoc.show(name, "showtest", "simple", "mydoc");
         strictEqual((result as { title: string }).title, "Hello");
         strictEqual((result as { shown: boolean }).shown, true);
       }),
@@ -239,7 +239,7 @@ describe("DesignDocument", () => {
         yield* doc.put(name, "target", { value: 1 });
 
         const ddoc = yield* DesignDocument;
-        yield* ddoc.render.update(name, "upd", "stamp", "target", {});
+        yield* ddoc.updateHandler(name, "upd", "stamp", "target", {});
 
         const updated = yield* doc.get(name, "target");
         strictEqual((updated as { stamped: boolean }).stamped, true);
@@ -266,7 +266,7 @@ describe("DesignDocument", () => {
         yield* doc.put(name, "l2", { title: "banana" });
 
         const ddoc = yield* DesignDocument;
-        const result = yield* ddoc.render.list(name, "listtest", "asJson", "all");
+        const result = yield* ddoc.viewWithList(name, "listtest", "asJson", "all");
         const items = ((result as { items: string[] }).items ?? []).sort();
         strictEqual(items.length, 2);
         strictEqual(items[0], "apple");

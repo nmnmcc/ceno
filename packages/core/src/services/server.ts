@@ -63,17 +63,14 @@ export namespace Server {
     uuids(options?: {
       readonly count?: number;
     }): Effect.Effect<UUIDObject, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Cookie-based authentication session: inspect the current user, log in, and log out. */
-    readonly session: {
-      /** Retrieves info about the current session and authenticated user. */
-      readonly current: Effect.Effect<DatabaseSessionResponse, CenoUnauthorized | CenoForbidden | TransportError>;
-      /** Authenticates with a name and password, establishing a cookie-based session. */
-      login(credentials: {
-        readonly name: string;
-        readonly password: string;
-      }): Effect.Effect<DatabaseAuthResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
-      /** Closes the current session (cookie-based logout). */
-      readonly logout: Effect.Effect<OkResponse, CenoUnauthorized | CenoForbidden | TransportError>;
-    };
+    /** Authenticates with a name and password, establishing a cookie-based session. */
+    auth(credentials: {
+      readonly name: string;
+      readonly password: string;
+    }): Effect.Effect<DatabaseAuthResponse, CenoBadRequest | CenoUnauthorized | CenoForbidden | TransportError>;
+    /** Retrieves info about the current session and authenticated user. */
+    readonly session: Effect.Effect<DatabaseSessionResponse, CenoUnauthorized | CenoForbidden | TransportError>;
+    /** Closes the current session (cookie-based logout). */
+    readonly logout: Effect.Effect<OkResponse, CenoUnauthorized | CenoForbidden | TransportError>;
   }
 }

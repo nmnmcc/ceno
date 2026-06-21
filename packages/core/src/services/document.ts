@@ -310,119 +310,12 @@ export interface AttachmentDestroyParams {
 export class Document extends Context.Service<Document, Document.Document>()("@ceno/core/Document") {}
 
 export namespace Document {
-  /** Mango index management (list, create, delete), scoped to a single database when accessed via `in`. */
-  export interface DocumentIndex {
-    /** Lists all Mango indexes in a database. */
-    list(
-      db: string,
-    ): Effect.Effect<
-      IndexListResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoInternalServerError | TransportError
-    >;
-    /** Creates a Mango index. */
-    create(
-      db: string,
-      index: CreateIndexRequest,
-    ): Effect.Effect<
-      CreateIndexResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-    >;
-    /** Deletes a Mango index. */
-    delete(
-      db: string,
-      ddoc: string,
-      name: string,
-    ): Effect.Effect<
-      OkResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-    >;
-  }
-
-  /** Bulk read and write operations across many documents at once. */
-  export interface DocumentBulk {
-    /** Inserts or updates multiple documents in bulk. */
-    write(
-      db: string,
-      docs: readonly unknown[],
-    ): Effect.Effect<
-      readonly DocumentBulkResponse[],
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
-    >;
-    /** Retrieves multiple documents by ID and optional revision in a single request. */
-    get(
-      db: string,
-      docs: readonly BulkGetDoc[],
-    ): Effect.Effect<
-      BulkGetResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoBadContentType | TransportError
-    >;
-  }
-
-  /** Attachment operations on a document (upload, download, existence, delete). */
-  export interface DocumentAttachment {
-    /** Uploads an attachment to a document. */
-    insert(
-      db: string,
-      docid: string,
-      attname: string,
-      data: unknown,
-      options?: { readonly rev?: string },
-    ): Effect.Effect<
-      DocumentInsertResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
-    >;
-    /** Downloads an attachment as a byte stream. */
-    get(
-      db: string,
-      docid: string,
-      attname: string,
-      options?: AttachmentGetParams,
-    ): Effect.Effect<
-      Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
-      CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
-    >;
-    /** Checks whether an attachment exists. */
-    exists(
-      db: string,
-      docid: string,
-      attname: string,
-    ): Effect.Effect<boolean, CenoUnauthorized | CenoForbidden | TransportError>;
-    /** Deletes an attachment from a document. */
-    destroy(
-      db: string,
-      docid: string,
-      attname: string,
-      rev: string,
-      options?: AttachmentDestroyParams,
-    ): Effect.Effect<
-      DocumentDestroyResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
-    >;
-  }
-
-  /** Document operations scoped to a single partition of a partitioned database. */
-  export interface DocumentPartition {
-    /** Retrieves partition metadata. */
-    info(
-      db: string,
-      partition: string,
-    ): Effect.Effect<PartitionInfoResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
-    /** Lists all documents in a partition. */
-    list(
-      db: string,
-      partition: string,
-      options?: DocumentListParams,
-    ): Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
-    /** Executes a Mango query within a partition. */
-    find(
-      db: string,
-      partition: string,
-      query: MangoQuery,
-    ): Effect.Effect<
-      MangoResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-    >;
-  }
+  /** Document operations narrowed to a single database, created by calling `in` on the {@link Document} service. */
+  export type DatabaseDocument = {
+    readonly [K in Exclude<keyof Document, "in">]: Document[K] extends (db: string, ...rest: infer R) => infer Ret
+      ? (...args: R) => Ret
+      : Document[K];
+  };
 
   /** Service shape for document-level operations. */
   export interface Document {
@@ -454,10 +347,7 @@ export namespace Document {
       options?: DocumentGetParams,
     ): Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
     /** Checks whether a document exists. */
-    exists(
-      db: string,
-      docid: string,
-    ): Effect.Effect<boolean, CenoUnauthorized | CenoForbidden | TransportError>;
+    exists(db: string, docid: string): Effect.Effect<boolean, CenoUnauthorized | CenoForbidden | TransportError>;
     /** Deletes a document by ID and revision. */
     destroy(
       db: string,
@@ -468,14 +358,31 @@ export namespace Document {
       DocumentDestroyResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
     >;
-    /** Lists all documents in a database; pass `stream: true` for a decoded-text stream. */
+    /** Inserts or updates multiple documents in bulk. */
+    bulk(
+      db: string,
+      docs: readonly unknown[],
+    ): Effect.Effect<
+      readonly DocumentBulkResponse[],
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
+    >;
+    /** Retrieves multiple documents by ID and optional revision in a single request. */
+    bulkGet(
+      db: string,
+      docs: readonly BulkGetDoc[],
+    ): Effect.Effect<
+      BulkGetResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoBadContentType | TransportError
+    >;
+    /** Lists all documents in a database. */
     list(
       db: string,
       options?: DocumentListParams,
     ): Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
-    list(
+    /** Streams all documents as decoded text. */
+    listStream(
       db: string,
-      options: DocumentListParams & { stream: true },
+      options?: DocumentListParams,
     ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
     /** Fetches specific documents by keys. */
     fetch(
@@ -483,7 +390,31 @@ export namespace Document {
       keys: readonly string[],
       options?: DocumentFetchParams,
     ): Effect.Effect<DocumentFetchResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
-    /** Executes a Mango query; pass `stream: true` for a decoded-text stream. */
+    /** Lists all Mango indexes in a database. */
+    listIndexes(
+      db: string,
+    ): Effect.Effect<
+      IndexListResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoInternalServerError | TransportError
+    >;
+    /** Creates a Mango index. */
+    createIndex(
+      db: string,
+      index: CreateIndexRequest,
+    ): Effect.Effect<
+      CreateIndexResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+    >;
+    /** Deletes a Mango index. */
+    deleteIndex(
+      db: string,
+      ddoc: string,
+      name: string,
+    ): Effect.Effect<
+      OkResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+    >;
+    /** Executes a Mango query. */
     find(
       db: string,
       query: MangoQuery,
@@ -491,9 +422,10 @@ export namespace Document {
       MangoResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
     >;
-    find(
+    /** Streams Mango query results as decoded text. */
+    findStream(
       db: string,
-      query: MangoQuery & { stream: true },
+      query: MangoQuery,
     ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
     /** Shows which index a Mango query would use without executing it. */
     explain(
@@ -503,76 +435,63 @@ export namespace Document {
       ExplainResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoInternalServerError | TransportError
     >;
-    /** Bulk read and write across many documents at once. */
-    readonly bulk: DocumentBulk;
-    /** Mango index management. */
-    readonly index: DocumentIndex;
-    /** Attachment operations on documents. */
-    readonly attachment: DocumentAttachment;
-    /** Operations scoped to a single partition of a partitioned database. */
-    readonly partition: DocumentPartition;
-  }
-
-  /** Mango index management with the `db` parameter removed, reached via `Document.in(db).index`. */
-  export interface DatabaseDocumentIndex {
-    list(...args: SkipDb<Parameters<DocumentIndex["list"]>>): ReturnType<DocumentIndex["list"]>;
-    create(...args: SkipDb<Parameters<DocumentIndex["create"]>>): ReturnType<DocumentIndex["create"]>;
-    delete(...args: SkipDb<Parameters<DocumentIndex["delete"]>>): ReturnType<DocumentIndex["delete"]>;
-  }
-
-  /** Bulk operations with the `db` parameter removed, reached via `Document.in(db).bulk`. */
-  export interface DatabaseDocumentBulk {
-    write(...args: SkipDb<Parameters<DocumentBulk["write"]>>): ReturnType<DocumentBulk["write"]>;
-    get(...args: SkipDb<Parameters<DocumentBulk["get"]>>): ReturnType<DocumentBulk["get"]>;
-  }
-
-  /** Attachment operations with the `db` parameter removed, reached via `Document.in(db).attachment`. */
-  export interface DatabaseDocumentAttachment {
-    insert(...args: SkipDb<Parameters<DocumentAttachment["insert"]>>): ReturnType<DocumentAttachment["insert"]>;
-    get(...args: SkipDb<Parameters<DocumentAttachment["get"]>>): ReturnType<DocumentAttachment["get"]>;
-    exists(...args: SkipDb<Parameters<DocumentAttachment["exists"]>>): ReturnType<DocumentAttachment["exists"]>;
-    destroy(...args: SkipDb<Parameters<DocumentAttachment["destroy"]>>): ReturnType<DocumentAttachment["destroy"]>;
-  }
-
-  /** Partition operations with the `db` parameter removed, reached via `Document.in(db).partition`. */
-  export interface DatabaseDocumentPartition {
-    info(...args: SkipDb<Parameters<DocumentPartition["info"]>>): ReturnType<DocumentPartition["info"]>;
-    list(...args: SkipDb<Parameters<DocumentPartition["list"]>>): ReturnType<DocumentPartition["list"]>;
-    find(...args: SkipDb<Parameters<DocumentPartition["find"]>>): ReturnType<DocumentPartition["find"]>;
-  }
-
-  /** Drops the leading `db: string` parameter from an argument tuple. */
-  type SkipDb<A extends readonly unknown[]> = A extends readonly [string, ...infer Rest] ? Rest : A;
-
-  /** Document operations narrowed to a single database, created by calling `in` on the {@link Document} service. */
-  export interface DatabaseDocument {
-    insert(...args: SkipDb<Parameters<Document["insert"]>>): ReturnType<Document["insert"]>;
-    put(...args: SkipDb<Parameters<Document["put"]>>): ReturnType<Document["put"]>;
-    get(...args: SkipDb<Parameters<Document["get"]>>): ReturnType<Document["get"]>;
-    exists(...args: SkipDb<Parameters<Document["exists"]>>): ReturnType<Document["exists"]>;
-    destroy(...args: SkipDb<Parameters<Document["destroy"]>>): ReturnType<Document["destroy"]>;
-    /** Lists all documents; pass `stream: true` for a decoded-text stream. */
-    list(
+    /** Uploads an attachment to a document. */
+    attachmentInsert(
+      db: string,
+      docid: string,
+      attname: string,
+      data: unknown,
+      options?: { readonly rev?: string },
+    ): Effect.Effect<
+      DocumentInsertResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
+    >;
+    /** Downloads an attachment as a byte stream. */
+    attachmentGet(
+      db: string,
+      docid: string,
+      attname: string,
+      options?: AttachmentGetParams,
+    ): Effect.Effect<
+      Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
+      CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
+    >;
+    /** Checks whether an attachment exists. */
+    attachmentExists(
+      db: string,
+      docid: string,
+      attname: string,
+    ): Effect.Effect<boolean, CenoUnauthorized | CenoForbidden | TransportError>;
+    /** Deletes an attachment from a document. */
+    attachmentDestroy(
+      db: string,
+      docid: string,
+      attname: string,
+      rev: string,
+      options?: AttachmentDestroyParams,
+    ): Effect.Effect<
+      DocumentDestroyResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
+    >;
+    /** Retrieves metadata for a single partition of a partitioned database. */
+    partitionInfo(
+      db: string,
+      partition: string,
+    ): Effect.Effect<PartitionInfoResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
+    /** Lists all documents in a single partition. */
+    partitionedList(
+      db: string,
+      partition: string,
       options?: DocumentListParams,
     ): Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
-    list(
-      options: DocumentListParams & { stream: true },
-    ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
-    fetch(...args: SkipDb<Parameters<Document["fetch"]>>): ReturnType<Document["fetch"]>;
-    /** Executes a Mango query; pass `stream: true` for a decoded-text stream. */
-    find(
+    /** Executes a Mango query within a single partition. */
+    partitionedFind(
+      db: string,
+      partition: string,
       query: MangoQuery,
     ): Effect.Effect<
       MangoResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
     >;
-    find(
-      query: MangoQuery & { stream: true },
-    ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
-    explain(...args: SkipDb<Parameters<Document["explain"]>>): ReturnType<Document["explain"]>;
-    readonly bulk: DatabaseDocumentBulk;
-    readonly index: DatabaseDocumentIndex;
-    readonly attachment: DatabaseDocumentAttachment;
-    readonly partition: DatabaseDocumentPartition;
   }
 }
