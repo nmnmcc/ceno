@@ -21,22 +21,22 @@ export namespace SchemaLocalDocument {
   /** Local document operations that auto-migrate reads and encode writes, parameterised by database name. */
   export interface SchemaLocalDocument<F extends Schema.Struct.Fields> {
     /** Retrieves a local document by ID, migrating it through the version chain to the current schema. */
-    readonly get: (
+    get(
       db: string,
       docid: string,
-    ) => Effect.Effect<
+    ): Effect.Effect<
       Schema.Struct.Type<F> & { readonly _id: string; readonly _rev: string },
       CenoBadRequest | CenoUnauthorized | CenoNotFound | TransportError | MigrateError,
       Schema.Struct.DecodingServices<F>
     >;
 
     /** Encodes and creates or updates a local document at a specific ID. */
-    readonly insert: (
+    insert(
       db: string,
       docid: string,
       body: Schema.Struct.Type<F>,
       options?: { readonly rev?: string },
-    ) => Effect.Effect<
+    ): Effect.Effect<
       DocumentInsertResponse,
       | CenoBadRequest
       | CenoUnauthorized
@@ -49,26 +49,26 @@ export namespace SchemaLocalDocument {
     >;
 
     /** Creates a database-scoped view of these operations, removing the `db` parameter from every method. */
-    readonly in: (db: string) => SchemaDatabaseLocalDocument<F>;
+    in(db: string): SchemaDatabaseLocalDocument<F>;
   }
 
   /** Local document operations narrowed to a single database, created by calling `in` on a {@link SchemaLocalDocument}. */
   export interface SchemaDatabaseLocalDocument<F extends Schema.Struct.Fields> {
     /** Retrieves a local document by ID, migrating it through the version chain to the current schema. */
-    readonly get: (
+    get(
       docid: string,
-    ) => Effect.Effect<
+    ): Effect.Effect<
       Schema.Struct.Type<F> & { readonly _id: string; readonly _rev: string },
       CenoBadRequest | CenoUnauthorized | CenoNotFound | TransportError | MigrateError,
       Schema.Struct.DecodingServices<F>
     >;
 
     /** Encodes and creates or updates a local document at a specific ID. */
-    readonly insert: (
+    insert(
       docid: string,
       body: Schema.Struct.Type<F>,
       options?: { readonly rev?: string },
-    ) => Effect.Effect<
+    ): Effect.Effect<
       DocumentInsertResponse,
       | CenoBadRequest
       | CenoUnauthorized

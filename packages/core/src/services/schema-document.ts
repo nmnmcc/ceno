@@ -30,22 +30,22 @@ export namespace SchemaDocument {
   /** Document operations that auto-migrate reads and encode writes, parameterised by database name. */
   export interface SchemaDocument<F extends Schema.Struct.Fields> {
     /** Retrieves a document by ID, migrating it through the version chain to the current schema. */
-    readonly get: (
+    get(
       db: string,
       docid: string,
       options?: DocumentGetParams,
-    ) => Effect.Effect<
+    ): Effect.Effect<
       Schema.Struct.Type<F> & { readonly _id: string; readonly _rev: string },
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError | MigrateError,
       Schema.Struct.DecodingServices<F>
     >;
 
     /** Encodes and inserts a typed document with server-generated or body-provided ID. */
-    readonly insert: (
+    insert(
       db: string,
       body: Schema.Struct.Type<F>,
       options?: DocumentInsertParams,
-    ) => Effect.Effect<
+    ): Effect.Effect<
       DocumentInsertResponse,
       | CenoBadRequest
       | CenoUnauthorized
@@ -58,12 +58,12 @@ export namespace SchemaDocument {
     >;
 
     /** Encodes and creates or updates a typed document at a specific ID. */
-    readonly put: (
+    put(
       db: string,
       docid: string,
       body: Schema.Struct.Type<F>,
       options?: DocumentPutParams,
-    ) => Effect.Effect<
+    ): Effect.Effect<
       DocumentInsertResponse,
       | CenoBadRequest
       | CenoUnauthorized
@@ -76,10 +76,10 @@ export namespace SchemaDocument {
     >;
 
     /** Executes a Mango query and migrates each result document through the version chain. */
-    readonly find: (
+    find(
       db: string,
       query: MangoQuery,
-    ) => Effect.Effect<
+    ): Effect.Effect<
       Omit<MangoResponse, "docs"> & { readonly docs: readonly Schema.Struct.Type<F>[] },
       | CenoBadRequest
       | CenoUnauthorized
@@ -92,36 +92,36 @@ export namespace SchemaDocument {
     >;
 
     /** Encodes and inserts multiple typed documents in a single bulk request. */
-    readonly bulk: (
+    bulk(
       db: string,
       docs: readonly Schema.Struct.Type<F>[],
-    ) => Effect.Effect<
+    ): Effect.Effect<
       readonly DocumentBulkResponse[],
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError | Schema.SchemaError,
       Schema.Struct.EncodingServices<F>
     >;
 
     /** Creates a database-scoped view of these operations, removing the `db` parameter from every method. */
-    readonly in: (db: string) => SchemaDatabaseDocument<F>;
+    in(db: string): SchemaDatabaseDocument<F>;
   }
 
   /** Document operations narrowed to a single database, created by calling `in` on a {@link SchemaDocument}. */
   export interface SchemaDatabaseDocument<F extends Schema.Struct.Fields> {
     /** Retrieves a document by ID, migrating it through the version chain to the current schema. */
-    readonly get: (
+    get(
       docid: string,
       options?: DocumentGetParams,
-    ) => Effect.Effect<
+    ): Effect.Effect<
       Schema.Struct.Type<F> & { readonly _id: string; readonly _rev: string },
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError | MigrateError,
       Schema.Struct.DecodingServices<F>
     >;
 
     /** Encodes and inserts a typed document with server-generated or body-provided ID. */
-    readonly insert: (
+    insert(
       body: Schema.Struct.Type<F>,
       options?: DocumentInsertParams,
-    ) => Effect.Effect<
+    ): Effect.Effect<
       DocumentInsertResponse,
       | CenoBadRequest
       | CenoUnauthorized
@@ -134,11 +134,11 @@ export namespace SchemaDocument {
     >;
 
     /** Encodes and creates or updates a typed document at a specific ID. */
-    readonly put: (
+    put(
       docid: string,
       body: Schema.Struct.Type<F>,
       options?: DocumentPutParams,
-    ) => Effect.Effect<
+    ): Effect.Effect<
       DocumentInsertResponse,
       | CenoBadRequest
       | CenoUnauthorized
@@ -151,9 +151,9 @@ export namespace SchemaDocument {
     >;
 
     /** Executes a Mango query and migrates each result document through the version chain. */
-    readonly find: (
+    find(
       query: MangoQuery,
-    ) => Effect.Effect<
+    ): Effect.Effect<
       Omit<MangoResponse, "docs"> & { readonly docs: readonly Schema.Struct.Type<F>[] },
       | CenoBadRequest
       | CenoUnauthorized
@@ -166,9 +166,9 @@ export namespace SchemaDocument {
     >;
 
     /** Encodes and inserts multiple typed documents in a single bulk request. */
-    readonly bulk: (
+    bulk(
       docs: readonly Schema.Struct.Type<F>[],
-    ) => Effect.Effect<
+    ): Effect.Effect<
       readonly DocumentBulkResponse[],
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError | Schema.SchemaError,
       Schema.Struct.EncodingServices<F>
