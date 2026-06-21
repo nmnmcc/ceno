@@ -33,10 +33,7 @@ export namespace LocalDocument {
       docid: string,
     ): Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoNotFound | TransportError>;
     /** Checks whether a local document exists. */
-    exists(
-      db: string,
-      docid: string,
-    ): Effect.Effect<boolean, CenoUnauthorized | CenoForbidden | TransportError>;
+    exists(db: string, docid: string): Effect.Effect<boolean, CenoUnauthorized | CenoForbidden | TransportError>;
     /** Creates or updates a local document. */
     insert(
       db: string,
@@ -57,9 +54,7 @@ export namespace LocalDocument {
       CenoBadRequest | CenoUnauthorized | CenoNotFound | CenoConflict | TransportError
     >;
     /** Lists all local documents. */
-    list(
-      db: string,
-    ): Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | TransportError>;
+    list(db: string): Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | TransportError>;
     /** Fetches specific local documents by keys. */
     fetch(
       db: string,

@@ -1,4 +1,4 @@
-import { isMigrateVersion, migrate, toSchema, version } from "@ceno/core";
+import { isMigrateVersion, migrate, toSchema, version } from "@ceno/schema";
 import { describe, it } from "@effect/vitest";
 import { strictEqual } from "@effect/vitest/utils";
 import { Effect, Schema } from "effect";
