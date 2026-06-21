@@ -29,7 +29,7 @@ const program = Effect.gen(function* () {
   yield* database.create("example-mango");
 
   // Seed data
-  yield* docs.bulk([
+  yield* docs.bulk.write([
     { _id: "p1", type: "product", name: "Laptop", price: 999, category: "electronics" },
     { _id: "p2", type: "product", name: "Keyboard", price: 79, category: "electronics" },
     { _id: "p3", type: "product", name: "Notebook", price: 12, category: "stationery" },
@@ -38,7 +38,7 @@ const program = Effect.gen(function* () {
   ]);
 
   // Create an index on category + price
-  const idx = yield* docs.createIndex({
+  const idx = yield* docs.index.create({
     index: { fields: ["category", "price"] },
     name: "category-price-index",
   });
@@ -59,7 +59,7 @@ const program = Effect.gen(function* () {
   console.log("Stationery:", stationery.docs.length, "items");
 
   // List indexes
-  const indexes = yield* docs.listIndexes();
+  const indexes = yield* docs.index.list();
   console.log(
     "Indexes:",
     indexes.indexes.map((i) => i.name),

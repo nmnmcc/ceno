@@ -1,10 +1,21 @@
+import type {
+  CenoBadRequest,
+  CenoForbidden,
+  CenoInternalServerError,
+  CenoNotFound,
+  CenoUnauthorized,
+  DesignDocumentSearchParams,
+  DesignDocumentViewParams,
+  TransportError,
+} from "@ceno/core";
 import {
   DesignDocument,
   DesignDocumentInfoResponse,
   DesignDocumentSearchResponse,
   DesignDocumentViewResponse,
 } from "@ceno/core";
-import { Effect, Layer, Schema, Stream } from "effect";
+import { Effect, Layer, Match, Schema, Stream } from "effect";
+import type { HttpClientError } from "effect/unstable/http";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi";
 
 import { CouchDbClient } from "./client";
@@ -156,52 +167,91 @@ export namespace CouchDbDesignDocument {
     Effect.gen(function* () {
       const connect = yield* CouchDbClient;
       const client = yield* connect(Api);
+
+      const wantsStream = (o: unknown): o is { readonly stream: true } =>
+        typeof o === "object" && o !== null && "stream" in o && o.stream === true;
+      const needsBody = (o: unknown): o is object => typeof o === "object" && o !== null && "keys" in o;
+
+      // `view` routes by its fourth argument: a `{ stream: true }` flag opens the
+      // decoded-text stream, a body carrying `keys` needs the POST form, and
+      // everything else is the plain GET view query.
+      function view(
+        db: string,
+        ddoc: string,
+        viewname: string,
+        options?: DesignDocumentViewParams,
+      ): Effect.Effect<
+        DesignDocumentViewResponse,
+        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
+      >;
+      function view(
+        db: string,
+        ddoc: string,
+        viewname: string,
+        options: DesignDocumentViewParams & { readonly stream: true },
+      ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
+      function view(
+        db: string,
+        ddoc: string,
+        viewname: string,
+        body: unknown,
+      ): Effect.Effect<
+        DesignDocumentViewResponse,
+        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
+      >;
+      function view(db: string, ddoc: string, viewname: string, options?: unknown) {
+        return Match.value(options).pipe(
+          Match.when(wantsStream, ({ stream: _stream, ...query }) =>
+            Effect.map(client.viewStream({ params: { db, ddoc, viewname }, query }), Stream.decodeText()),
+          ),
+          Match.when(needsBody, (body) => client.viewPost({ params: { db, ddoc, viewname }, payload: body })),
+          Match.orElse((query) => client.view({ params: { db, ddoc, viewname }, query: query ?? {} })),
+        );
+      }
+
+      // `search` opens the decoded-text stream when `{ stream: true }` is set,
+      // otherwise performs the plain GET search query.
+      function search(
+        db: string,
+        ddoc: string,
+        index: string,
+        options?: DesignDocumentSearchParams,
+      ): Effect.Effect<
+        DesignDocumentSearchResponse,
+        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+      >;
+      function search(
+        db: string,
+        ddoc: string,
+        index: string,
+        options: DesignDocumentSearchParams & { readonly stream: true },
+      ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
+      function search(db: string, ddoc: string, index: string, options?: unknown) {
+        return Match.value(options).pipe(
+          Match.when(wantsStream, ({ stream: _stream, ...query }) =>
+            Effect.map(client.searchStream({ params: { db, ddoc, index }, query }), Stream.decodeText()),
+          ),
+          Match.orElse((query) => client.search({ params: { db, ddoc, index }, query: query ?? {} })),
+        );
+      }
+
       return DesignDocument.of({
         info: (db, ddoc) => client.info({ params: { db, ddoc } }),
-        view: (db, ddoc, viewname, opts) =>
-          client.view({
-            params: { db, ddoc, viewname },
-            query: opts ?? {},
-          }),
-        viewPost: (db, ddoc, viewname, body) =>
-          client.viewPost({
-            params: { db, ddoc, viewname },
-            payload: body,
-          }),
-        viewStream: (db, ddoc, viewname, opts) =>
-          Effect.map(client.viewStream({ params: { db, ddoc, viewname }, query: opts ?? {} }), Stream.decodeText()),
-        search: (db, ddoc, index, opts) =>
-          client.search({
-            params: { db, ddoc, index },
-            query: opts ?? {},
-          }),
-        searchStream: (db, ddoc, index, opts) =>
-          Effect.map(client.searchStream({ params: { db, ddoc, index }, query: opts ?? {} }), Stream.decodeText()),
-        show: (db, ddoc, func, docid) =>
-          client.show({
-            params: { db, ddoc, func, docid },
-            query: {},
-          }),
-        updateHandler: (db, ddoc, func, docid, body) =>
-          client.updateHandler({
-            params: { db, ddoc, func, docid },
-            payload: body,
-          }),
-        viewWithList: (db, ddoc, list, viewname, opts) =>
-          client.viewWithList({
-            params: { db, ddoc, list, viewname },
-            query: opts ?? {},
-          }),
-        partitionedView: (db, partition, ddoc, viewname, opts) =>
-          client.partitionedView({
-            params: { db, partition, ddoc, viewname },
-            query: opts ?? {},
-          }),
-        partitionedSearch: (db, partition, ddoc, index, opts) =>
-          client.partitionedSearch({
-            params: { db, partition, ddoc, index },
-            query: opts ?? {},
-          }),
+        view,
+        search,
+        render: {
+          show: (db, ddoc, func, docid) => client.show({ params: { db, ddoc, func, docid }, query: {} }),
+          update: (db, ddoc, func, docid, body) =>
+            client.updateHandler({ params: { db, ddoc, func, docid }, payload: body }),
+          list: (db, ddoc, list, viewname, opts) =>
+            client.viewWithList({ params: { db, ddoc, list, viewname }, query: opts ?? {} }),
+        },
+        partition: {
+          view: (db, partition, ddoc, viewname, opts) =>
+            client.partitionedView({ params: { db, partition, ddoc, viewname }, query: opts ?? {} }),
+          search: (db, partition, ddoc, index, opts) =>
+            client.partitionedSearch({ params: { db, partition, ddoc, index }, query: opts ?? {} }),
+        },
       });
     }),
   );

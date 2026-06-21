@@ -124,24 +124,25 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  // ─── Head ───
+  // ─── Exists ───
 
-  it.effect("head succeeds for existing document", () =>
+  it.effect("exists returns true for existing document", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
         yield* doc.put(name, "doc1", { title: "Hello" });
-        yield* doc.head(name, "doc1");
+        const result = yield* doc.exists(name, "doc1");
+        strictEqual(result, true);
       }),
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("head fails for missing document", () =>
+  it.effect("exists returns false for missing document", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
-        const exit = yield* doc.head(name, "nonexistent").pipe(Effect.exit);
-        strictEqual(exit._tag, "Failure");
+        const result = yield* doc.exists(name, "nonexistent");
+        strictEqual(result, false);
       }),
     ).pipe(Effect.provide(TestLayer)),
   );
@@ -190,11 +191,11 @@ describe("Document", () => {
 
   // ─── Bulk ───
 
-  it.effect("bulk inserts multiple documents", () =>
+  it.effect("bulk.write inserts multiple documents", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
-        const result = yield* doc.bulk(name, [{ title: "A" }, { title: "B" }]);
+        const result = yield* doc.bulk.write(name, [{ title: "A" }, { title: "B" }]);
         strictEqual(result.length, 2);
         strictEqual(result[0]!.ok, true);
         strictEqual(result[1]!.ok, true);
@@ -202,11 +203,11 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("bulk with _id inserts at specific IDs", () =>
+  it.effect("bulk.write with _id inserts at specific IDs", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
-        const result = yield* doc.bulk(name, [
+        const result = yield* doc.bulk.write(name, [
           { _id: "b1", x: 1 },
           { _id: "b2", x: 2 },
         ]);
@@ -219,12 +220,12 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("bulk reports per-document errors for conflicts", () =>
+  it.effect("bulk.write reports per-document errors for conflicts", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
         yield* doc.put(name, "exists", { x: 1 });
-        const result = yield* doc.bulk(name, [
+        const result = yield* doc.bulk.write(name, [
           { _id: "exists", x: 2 },
           { _id: "new-doc", x: 3 },
         ]);
@@ -236,13 +237,13 @@ describe("Document", () => {
 
   // ─── Bulk Get ───
 
-  it.effect("bulkGet retrieves multiple documents", () =>
+  it.effect("bulk.get retrieves multiple documents", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
         yield* doc.put(name, "d1", { a: 1 });
         yield* doc.put(name, "d2", { b: 2 });
-        const result = yield* doc.bulkGet(name, [{ id: "d1" }, { id: "d2" }]);
+        const result = yield* doc.bulk.get(name, [{ id: "d1" }, { id: "d2" }]);
         strictEqual(result.results.length, 2);
         strictEqual(result.results[0]!.id, "d1");
         strictEqual(result.results[1]!.id, "d2");
@@ -250,12 +251,12 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("bulkGet returns error entries for missing documents", () =>
+  it.effect("bulk.get returns error entries for missing documents", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
         yield* doc.put(name, "exists", { a: 1 });
-        const result = yield* doc.bulkGet(name, [{ id: "exists" }, { id: "missing" }]);
+        const result = yield* doc.bulk.get(name, [{ id: "exists" }, { id: "missing" }]);
         strictEqual(result.results.length, 2);
         const missingResult = result.results.find((r) => r.id === "missing")!;
         strictEqual("error" in missingResult.docs[0]!, true);
@@ -332,11 +333,11 @@ describe("Document", () => {
 
   // ─── Mango Index ───
 
-  it.effect("createIndex creates a Mango index", () =>
+  it.effect("index.create creates a Mango index", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
-        const result = yield* doc.createIndex(name, {
+        const result = yield* doc.index.create(name, {
           index: { fields: ["title"] },
           name: "title-index",
           type: "json",
@@ -347,16 +348,16 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("createIndex returns exists for duplicate index", () =>
+  it.effect("index.create returns exists for duplicate index", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
-        yield* doc.createIndex(name, {
+        yield* doc.index.create(name, {
           index: { fields: ["title"] },
           name: "title-idx",
           type: "json",
         });
-        const result = yield* doc.createIndex(name, {
+        const result = yield* doc.index.create(name, {
           index: { fields: ["title"] },
           name: "title-idx",
           type: "json",
@@ -366,16 +367,16 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("listIndexes includes default and custom indexes", () =>
+  it.effect("index.list includes default and custom indexes", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
-        yield* doc.createIndex(name, {
+        yield* doc.index.create(name, {
           index: { fields: ["status"] },
           name: "status-idx",
           type: "json",
         });
-        const result = yield* doc.listIndexes(name);
+        const result = yield* doc.index.list(name);
         strictEqual(result.total_rows >= 2, true);
         const statusIdx = result.indexes.find((i) => i.name === "status-idx");
         strictEqual(statusIdx !== undefined, true);
@@ -384,19 +385,19 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("deleteIndex removes a Mango index", () =>
+  it.effect("index.delete removes a Mango index", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
-        const created = yield* doc.createIndex(name, {
+        const created = yield* doc.index.create(name, {
           index: { fields: ["category"] },
           name: "cat-idx",
           type: "json",
         });
-        const result = yield* doc.deleteIndex(name, created.id.replace("_design/", ""), "cat-idx");
+        const result = yield* doc.index.delete(name, created.id.replace("_design/", ""), "cat-idx");
         strictEqual(result.ok, true);
 
-        const indexes = yield* doc.listIndexes(name);
+        const indexes = yield* doc.index.list(name);
         const found = indexes.indexes.find((i) => i.name === "cat-idx");
         strictEqual(found, undefined);
       }),
@@ -422,7 +423,7 @@ describe("Document", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
-        yield* doc.bulk(name, [
+        yield* doc.bulk.write(name, [
           { _id: "f1", type: "item" },
           { _id: "f2", type: "item" },
           { _id: "f3", type: "item" },
@@ -455,8 +456,8 @@ describe("Document", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
-        yield* doc.createIndex(name, { index: { fields: ["priority"] }, type: "json" });
-        yield* doc.bulk(name, [
+        yield* doc.index.create(name, { index: { fields: ["priority"] }, type: "json" });
+        yield* doc.bulk.write(name, [
           { _id: "low", priority: 3 },
           { _id: "high", priority: 1 },
           { _id: "mid", priority: 2 },
@@ -479,7 +480,7 @@ describe("Document", () => {
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
-        yield* doc.createIndex(name, { index: { fields: ["status"] }, name: "status-idx", type: "json" });
+        yield* doc.index.create(name, { index: { fields: ["status"] }, name: "status-idx", type: "json" });
         const plan = (yield* doc.explain(name, {
           selector: { status: "active" },
           use_index: "status-idx",
@@ -497,7 +498,7 @@ describe("Document", () => {
         const doc = yield* Document;
         const created = yield* doc.put(name, "att-doc", { title: "With Attachment" });
 
-        const insertResult = yield* doc.attachmentInsert(
+        const insertResult = yield* doc.attachment.insert(
           name,
           "att-doc",
           "hello.txt",
@@ -507,13 +508,14 @@ describe("Document", () => {
         strictEqual(insertResult.ok, true);
         strictEqual(insertResult.id, "att-doc");
 
-        yield* doc.attachmentHead(name, "att-doc", "hello.txt");
+        const existsBefore = yield* doc.attachment.exists(name, "att-doc", "hello.txt");
+        strictEqual(existsBefore, true);
 
-        const destroyResult = yield* doc.attachmentDestroy(name, "att-doc", "hello.txt", insertResult.rev);
+        const destroyResult = yield* doc.attachment.destroy(name, "att-doc", "hello.txt", insertResult.rev);
         strictEqual(destroyResult.ok, true);
 
-        const exit = yield* doc.attachmentHead(name, "att-doc", "hello.txt").pipe(Effect.exit);
-        strictEqual(exit._tag, "Failure");
+        const existsAfter = yield* doc.attachment.exists(name, "att-doc", "hello.txt");
+        strictEqual(existsAfter, false);
       }),
     ).pipe(Effect.provide(TestLayer)),
   );
@@ -535,14 +537,14 @@ describe("Document", () => {
 
   // ─── Attachment download ───
 
-  it.effect("attachmentGet downloads attachment content as a stream", () =>
+  it.effect("attachment.get downloads attachment content as a stream", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
         const created = yield* doc.put(name, "att-doc", { title: "attachment test" });
-        yield* doc.attachmentInsert(name, "att-doc", "hello.txt", "hello world", { rev: created.rev });
+        yield* doc.attachment.insert(name, "att-doc", "hello.txt", "hello world", { rev: created.rev });
 
-        const stream = yield* doc.attachmentGet(name, "att-doc", "hello.txt");
+        const stream = yield* doc.attachment.get(name, "att-doc", "hello.txt");
         const chunks = yield* Stream.runCollect(stream);
         strictEqual(chunks.length > 0, true);
         const text = new TextDecoder().decode(chunks[0]);
@@ -551,12 +553,12 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("attachmentGet returns CenoNotFound for missing attachment", () =>
+  it.effect("attachment.get returns CenoNotFound for missing attachment", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
         yield* doc.put(name, "att-doc2", { title: "no attachment" });
-        yield* doc.attachmentGet(name, "att-doc2", "missing.txt").pipe(
+        yield* doc.attachment.get(name, "att-doc2", "missing.txt").pipe(
           Effect.andThen(Effect.die("Expected CenoNotFound")),
           Effect.catchTag("CenoNotFound", () => Effect.void),
         );
@@ -566,14 +568,14 @@ describe("Document", () => {
 
   // ─── Streaming ───
 
-  it.effect("listStream returns a stream of decoded text", () =>
+  it.effect("list with stream returns a stream of decoded text", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
         yield* doc.put(name, "s1", { x: 1 });
         yield* doc.put(name, "s2", { x: 2 });
 
-        const stream = yield* doc.listStream(name);
+        const stream = yield* doc.list(name, { stream: true });
         const chunks = yield* Stream.runCollect(stream);
         const body = chunks.join("");
         strictEqual(body.includes("s1"), true);
@@ -582,13 +584,13 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("findStream returns a stream of decoded text", () =>
+  it.effect("find with stream returns a stream of decoded text", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
         yield* doc.put(name, "fs1", { type: "item", value: 42 });
 
-        const stream = yield* doc.findStream(name, { selector: { type: "item" } });
+        const stream = yield* doc.find(name, { selector: { type: "item" }, stream: true });
         const chunks = yield* Stream.runCollect(stream);
         const body = chunks.join("");
         strictEqual(body.includes("fs1"), true);
@@ -598,14 +600,14 @@ describe("Document", () => {
 
   // ─── Partitioned database ───
 
-  it.effect("partitionInfo returns partition metadata", () =>
+  it.effect("partition.info returns partition metadata", () =>
     withTempPartitionedDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
         yield* doc.put(name, "mypart:doc1", { title: "first" });
         yield* doc.put(name, "mypart:doc2", { title: "second" });
 
-        const info = yield* doc.partitionInfo(name, "mypart");
+        const info = yield* doc.partition.info(name, "mypart");
         strictEqual(info.partition, "mypart");
         strictEqual(info.doc_count, 2);
         strictEqual(info.db_name, name);
@@ -613,7 +615,7 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("partitionedList returns documents within a partition", () =>
+  it.effect("partition.list returns documents within a partition", () =>
     withTempPartitionedDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
@@ -621,7 +623,7 @@ describe("Document", () => {
         yield* doc.put(name, "alpha:d2", { x: 2 });
         yield* doc.put(name, "beta:d3", { x: 3 });
 
-        const result = yield* doc.partitionedList(name, "alpha");
+        const result = yield* doc.partition.list(name, "alpha");
         strictEqual(result.rows.length, 2);
         const ids = result.rows.map((r) => r.id).sort();
         strictEqual(ids[0], "alpha:d1");
@@ -630,7 +632,7 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("partitionedFind queries within a partition", () =>
+  it.effect("partition.find queries within a partition", () =>
     withTempPartitionedDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
@@ -638,7 +640,7 @@ describe("Document", () => {
         yield* doc.put(name, "region:us2", { country: "US", city: "LA" });
         yield* doc.put(name, "region:eu1", { country: "DE", city: "Berlin" });
 
-        const result = yield* doc.partitionedFind(name, "region", {
+        const result = yield* doc.partition.find(name, "region", {
           selector: { country: "US" },
         });
         strictEqual(result.docs.length, 2);
@@ -646,7 +648,7 @@ describe("Document", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("partitionedView queries a view within a partition", () =>
+  it.effect("partition.view queries a view within a partition", () =>
     withTempPartitionedDb((name) =>
       Effect.gen(function* () {
         const doc = yield* Document;
@@ -659,7 +661,7 @@ describe("Document", () => {
         yield* doc.put(name, "other:b1", { city: "Tokyo" });
 
         const ddoc = yield* DesignDocument;
-        const result = yield* ddoc.partitionedView(name, "zone", "test", "by_city");
+        const result = yield* ddoc.partition.view(name, "zone", "test", "by_city");
         strictEqual(result.rows.length, 2);
         const keys = result.rows.map((r) => r.key).sort();
         strictEqual(keys[0], "London");

@@ -32,6 +32,11 @@ export namespace LocalDocument {
       db: string,
       docid: string,
     ) => Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoNotFound | TransportError>;
+    /** Checks whether a local document exists (HEAD request). */
+    readonly exists: (
+      db: string,
+      docid: string,
+    ) => Effect.Effect<boolean, CenoUnauthorized | CenoForbidden | TransportError>;
     /** Creates or updates a local document. */
     readonly insert: (
       db: string,

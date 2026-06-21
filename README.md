@@ -68,9 +68,9 @@ The [`examples/`](./examples) directory contains runnable examples that progress
 | Example                                                 | What it covers                                 |
 | ------------------------------------------------------- | ---------------------------------------------- |
 | [`01-server-info`](./examples/01-server-info)           | Connect and query server metadata              |
-| [`02-database-basics`](./examples/02-database-basics)   | Database lifecycle: create, get, list, destroy |
+| [`02-database-basics`](./examples/02-database-basics)   | Database lifecycle: create, exists, info, list |
 | [`03-document-crud`](./examples/03-document-crud)       | Document CRUD and `.in(db)` scoping            |
-| [`04-bulk-operations`](./examples/04-bulk-operations)   | Bulk insert, fetch, and bulkGet                |
+| [`04-bulk-operations`](./examples/04-bulk-operations)   | Bulk write and get                             |
 | [`05-mango-queries`](./examples/05-mango-queries)       | Mango queries and indexes                      |
 | [`06-design-documents`](./examples/06-design-documents) | MapReduce views and design document info       |
 | [`07-changes-feed`](./examples/07-changes-feed)         | Normal and continuous streaming changes feed   |

@@ -1,3 +1,13 @@
+import type {
+  CenoBadRequest,
+  CenoForbidden,
+  CenoInternalServerError,
+  CenoNotFound,
+  CenoUnauthorized,
+  DocumentListParams,
+  MangoQuery,
+  TransportError,
+} from "@ceno/core";
 import {
   BulkGetResponse,
   CreateIndexResponse,
@@ -12,7 +22,8 @@ import {
   OkResponse,
   PartitionInfoResponse,
 } from "@ceno/core";
-import { Effect, Layer, Schema, Stream } from "effect";
+import { Effect, Layer, Match, Schema, Stream } from "effect";
+import type { HttpClientError } from "effect/unstable/http";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi";
 
 import { CouchDbClient } from "./client";
@@ -235,7 +246,142 @@ export namespace CouchDbDocument {
     Effect.gen(function* () {
       const connect = yield* CouchDbClient;
       const client = yield* connect(Api);
-      const methods: Omit<Document.Document, "in"> = {
+
+      const wantsStream = (o: unknown): o is { readonly stream: true } =>
+        typeof o === "object" && o !== null && "stream" in o && o.stream === true;
+
+      // A successful HEAD means the resource exists; a 404 is the negative answer
+      // rather than an error. CouchDB sends no body on a HEAD, so a miss arrives
+      // as a raw 404 status code rather than a decoded CenoNotFound.
+      const foldExists = <E extends { readonly _tag: string }>(effect: Effect.Effect<void, E>) =>
+        effect.pipe(
+          Effect.as(true),
+          Effect.catchIf(
+            (error): error is Extract<E, { _tag: "CenoNotFound" }> => error._tag === "CenoNotFound",
+            () => Effect.succeed(false),
+          ),
+          Effect.catchIf(
+            (error) =>
+              error._tag === "HttpClientError" &&
+              "reason" in error &&
+              typeof error.reason === "object" &&
+              error.reason !== null &&
+              "_tag" in error.reason &&
+              error.reason._tag === "StatusCodeError" &&
+              "response" in error.reason &&
+              typeof error.reason.response === "object" &&
+              error.reason.response !== null &&
+              "status" in error.reason.response &&
+              error.reason.response.status === 404,
+            () => Effect.succeed(false),
+          ),
+        );
+
+      // `list` returns the parsed listing by default; `{ stream: true }` opens
+      // the decoded-text stream of the same `_all_docs` endpoint. The dispatch is
+      // shared so both the db-passing form and the `in(db)`-scoped form reuse it.
+      const listDispatch = (db: string, options?: unknown) =>
+        Match.value(options).pipe(
+          Match.when(wantsStream, ({ stream: _stream, ...query }) =>
+            Effect.map(client.listStream({ params: { db }, query }), Stream.decodeText()),
+          ),
+          Match.orElse((query) => client.list({ params: { db }, query: query ?? {} })),
+        );
+      function list(
+        db: string,
+        options?: DocumentListParams,
+      ): Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
+      function list(
+        db: string,
+        options: DocumentListParams & { readonly stream: true },
+      ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
+      function list(db: string, options?: unknown) {
+        return listDispatch(db, options);
+      }
+
+      // `find` runs the Mango query and returns the parsed response by default;
+      // `{ stream: true }` opens the decoded-text stream of the same `_find`
+      // endpoint, with the flag stripped from the forwarded body.
+      const findDispatch = (db: string, query: MangoQuery & { readonly stream?: true }) =>
+        Match.value(query).pipe(
+          Match.when(wantsStream, ({ stream: _stream, ...payload }) =>
+            Effect.map(client.findStream({ params: { db }, payload }), Stream.decodeText()),
+          ),
+          Match.orElse((payload) => client.find({ params: { db }, payload })),
+        );
+      function find(
+        db: string,
+        query: MangoQuery,
+      ): Effect.Effect<
+        MangoResponse,
+        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+      >;
+      function find(
+        db: string,
+        query: MangoQuery & { readonly stream: true },
+      ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
+      function find(db: string, query: MangoQuery & { readonly stream?: true }) {
+        return findDispatch(db, query);
+      }
+
+      // The `in(db)` view re-binds every operation to a fixed database. `list`
+      // and `find` keep their stream overloads via their own signatures.
+      const makeScoped = (db: string): Document.DatabaseDocument => {
+        function scopedList(
+          options?: DocumentListParams,
+        ): Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
+        function scopedList(
+          options: DocumentListParams & { readonly stream: true },
+        ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
+        function scopedList(options?: unknown) {
+          return listDispatch(db, options);
+        }
+        function scopedFind(
+          query: MangoQuery,
+        ): Effect.Effect<
+          MangoResponse,
+          CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+        >;
+        function scopedFind(
+          query: MangoQuery & { readonly stream: true },
+        ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
+        function scopedFind(query: MangoQuery & { readonly stream?: true }) {
+          return findDispatch(db, query);
+        }
+        return {
+          insert: (body, opts) => document.insert(db, body, opts),
+          put: (docid, body, opts) => document.put(db, docid, body, opts),
+          get: (docid, opts) => document.get(db, docid, opts),
+          exists: (docid) => document.exists(db, docid),
+          destroy: (docid, rev, opts) => document.destroy(db, docid, rev, opts),
+          list: scopedList,
+          fetch: (keys, opts) => document.fetch(db, keys, opts),
+          find: scopedFind,
+          explain: (query) => document.explain(db, query),
+          bulk: {
+            write: (docs) => document.bulk.write(db, docs),
+            get: (docs) => document.bulk.get(db, docs),
+          },
+          index: {
+            list: () => document.index.list(db),
+            create: (index) => document.index.create(db, index),
+            delete: (ddoc, name) => document.index.delete(db, ddoc, name),
+          },
+          attachment: {
+            insert: (docid, attname, data, opts) => document.attachment.insert(db, docid, attname, data, opts),
+            get: (docid, attname, opts) => document.attachment.get(db, docid, attname, opts),
+            exists: (docid, attname) => document.attachment.exists(db, docid, attname),
+            destroy: (docid, attname, rev, opts) => document.attachment.destroy(db, docid, attname, rev, opts),
+          },
+          partition: {
+            info: (partition) => document.partition.info(db, partition),
+            list: (partition, opts) => document.partition.list(db, partition, opts),
+            find: (partition, query) => document.partition.find(db, partition, query),
+          },
+        };
+      };
+
+      const document: Document.Document = {
         insert: (db, body, opts) => client.insert({ params: { db }, payload: body, query: { batch: opts?.batch } }),
         put: (db, docid, body, opts) =>
           client.insertWithId({
@@ -244,84 +390,39 @@ export namespace CouchDbDocument {
             query: { rev: opts?.rev, batch: opts?.batch, new_edits: opts?.new_edits },
           }),
         get: (db, docid, opts) => client.get({ params: { db, docid }, query: opts ?? {} }),
-        head: (db, docid) => client.head({ params: { db, docid } }),
+        exists: (db, docid) => foldExists(client.head({ params: { db, docid } })),
         destroy: (db, docid, rev, opts) =>
           client.destroy({ params: { db, docid }, query: { rev, batch: opts?.batch } }),
-        bulk: (db, docs) => client.bulk({ params: { db }, payload: { docs } }),
-        bulkGet: (db, docs) => client.bulkGet({ params: { db }, payload: { docs } }),
-        list: (db, opts) => client.list({ params: { db }, query: opts ?? {} }),
-        fetch: (db, keys, opts) =>
-          client.fetch({
-            params: { db },
-            payload: { keys },
-            query: opts ?? {},
-          }),
-        listIndexes: (db) => client.listIndexes({ params: { db } }),
-        createIndex: (db, index) => client.createIndex({ params: { db }, payload: index }),
-        deleteIndex: (db, ddoc, name) => client.deleteIndex({ params: { db, ddoc, name } }),
-        find: (db, query) => client.find({ params: { db }, payload: query }),
+        list,
+        fetch: (db, keys, opts) => client.fetch({ params: { db }, payload: { keys }, query: opts ?? {} }),
+        find,
         explain: (db, query) => client.explain({ params: { db }, payload: query }),
-        attachmentInsert: (db, docid, attname, data, opts) =>
-          client.attachmentInsert({
-            params: { db, docid, attname },
-            payload: data,
-            query: { rev: opts?.rev },
-          }),
-        attachmentGet: (db, docid, attname, opts) =>
-          client.attachmentGet({
-            params: { db, docid, attname },
-            query: { rev: opts?.rev },
-          }),
-        attachmentHead: (db, docid, attname) => client.attachmentHead({ params: { db, docid, attname } }),
-        attachmentDestroy: (db, docid, attname, rev, opts) =>
-          client.attachmentDestroy({
-            params: { db, docid, attname },
-            query: { rev, batch: opts?.batch },
-          }),
-        listStream: (db, opts) =>
-          Effect.map(client.listStream({ params: { db }, query: opts ?? {} }), Stream.decodeText()),
-        findStream: (db, query) =>
-          Effect.map(client.findStream({ params: { db }, payload: query }), Stream.decodeText()),
-        partitionInfo: (db, partition) => client.partitionInfo({ params: { db, partition } }),
-        partitionedList: (db, partition, opts) =>
-          client.partitionedList({
-            params: { db, partition },
-            query: opts ?? {},
-          }),
-        partitionedFind: (db, partition, query) =>
-          client.partitionedFind({
-            params: { db, partition },
-            payload: query,
-          }),
+        bulk: {
+          write: (db, docs) => client.bulk({ params: { db }, payload: { docs } }),
+          get: (db, docs) => client.bulkGet({ params: { db }, payload: { docs } }),
+        },
+        index: {
+          list: (db) => client.listIndexes({ params: { db } }),
+          create: (db, index) => client.createIndex({ params: { db }, payload: index }),
+          delete: (db, ddoc, name) => client.deleteIndex({ params: { db, ddoc, name } }),
+        },
+        attachment: {
+          insert: (db, docid, attname, data, opts) =>
+            client.attachmentInsert({ params: { db, docid, attname }, payload: data, query: { rev: opts?.rev } }),
+          get: (db, docid, attname, opts) =>
+            client.attachmentGet({ params: { db, docid, attname }, query: { rev: opts?.rev } }),
+          exists: (db, docid, attname) => foldExists(client.attachmentHead({ params: { db, docid, attname } })),
+          destroy: (db, docid, attname, rev, opts) =>
+            client.attachmentDestroy({ params: { db, docid, attname }, query: { rev, batch: opts?.batch } }),
+        },
+        partition: {
+          info: (db, partition) => client.partitionInfo({ params: { db, partition } }),
+          list: (db, partition, opts) => client.partitionedList({ params: { db, partition }, query: opts ?? {} }),
+          find: (db, partition, query) => client.partitionedFind({ params: { db, partition }, payload: query }),
+        },
+        in: makeScoped,
       };
-      return Document.of({
-        ...methods,
-        in: (db) => ({
-          insert: (body, opts) => methods.insert(db, body, opts),
-          put: (docid, body, opts) => methods.put(db, docid, body, opts),
-          get: (docid, opts) => methods.get(db, docid, opts),
-          head: (docid) => methods.head(db, docid),
-          destroy: (docid, rev, opts) => methods.destroy(db, docid, rev, opts),
-          bulk: (docs) => methods.bulk(db, docs),
-          bulkGet: (docs) => methods.bulkGet(db, docs),
-          list: (opts) => methods.list(db, opts),
-          fetch: (keys, opts) => methods.fetch(db, keys, opts),
-          listIndexes: () => methods.listIndexes(db),
-          createIndex: (index) => methods.createIndex(db, index),
-          deleteIndex: (ddoc, name) => methods.deleteIndex(db, ddoc, name),
-          find: (query) => methods.find(db, query),
-          explain: (query) => methods.explain(db, query),
-          attachmentInsert: (docid, attname, data, opts) => methods.attachmentInsert(db, docid, attname, data, opts),
-          attachmentGet: (docid, attname, opts) => methods.attachmentGet(db, docid, attname, opts),
-          attachmentHead: (docid, attname) => methods.attachmentHead(db, docid, attname),
-          attachmentDestroy: (docid, attname, rev, opts) => methods.attachmentDestroy(db, docid, attname, rev, opts),
-          listStream: (opts) => methods.listStream(db, opts),
-          findStream: (query) => methods.findStream(db, query),
-          partitionInfo: (partition) => methods.partitionInfo(db, partition),
-          partitionedList: (partition, opts) => methods.partitionedList(db, partition, opts),
-          partitionedFind: (partition, query) => methods.partitionedFind(db, partition, query),
-        }),
-      });
+      return Document.of(document);
     }),
   );
 }

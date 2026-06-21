@@ -39,7 +39,7 @@ const program = Effect.gen(function* () {
   });
 
   // Seed data
-  yield* document.bulk(db, [
+  yield* document.bulk.write(db, [
     { category: "fruit", name: "Apple", price: 1.5 },
     { category: "fruit", name: "Banana", price: 0.75 },
     { category: "vegetable", name: "Carrot", price: 2.0 },
@@ -55,8 +55,8 @@ const program = Effect.gen(function* () {
   }
   console.log("Total rows:", result.total_rows);
 
-  // Query with viewPost — filter by specific keys
-  const fruits = yield* ddoc.viewPost(db, "inventory", "by_category", {
+  // Query with view (POST body) — filter by specific keys
+  const fruits = yield* ddoc.view(db, "inventory", "by_category", {
     keys: ["fruit"],
   });
   console.log("Fruits only:");

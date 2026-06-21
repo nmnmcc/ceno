@@ -32,27 +32,27 @@ describe("Server", () => {
     }).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("auth authenticates with valid credentials", () =>
+  it.effect("session.login authenticates with valid credentials", () =>
     Effect.gen(function* () {
       const server = yield* Server;
-      const result = yield* server.auth({ name: "admin", password: "admin" });
+      const result = yield* server.session.login({ name: "admin", password: "admin" });
       strictEqual(result.ok, true);
       strictEqual(result.name, "admin");
     }).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("session returns current session info", () =>
+  it.effect("session.current returns current session info", () =>
     Effect.gen(function* () {
       const server = yield* Server;
-      const result = yield* server.session;
+      const result = yield* server.session.current;
       strictEqual(result.ok, true);
     }).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("logout closes session", () =>
+  it.effect("session.logout closes session", () =>
     Effect.gen(function* () {
       const server = yield* Server;
-      const result = yield* server.logout;
+      const result = yield* server.session.logout;
       strictEqual(result.ok, true);
     }).pipe(Effect.provide(TestLayer)),
   );

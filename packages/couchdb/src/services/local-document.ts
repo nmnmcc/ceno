@@ -28,6 +28,11 @@ export namespace CouchDbLocalDocument {
         success: Schema.Unknown,
         error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoNotFoundWire],
       }),
+      HttpApiEndpoint.head("exists", "/:db/_local/:docid", {
+        params: Schema.Struct({ db: Schema.String, docid: Schema.String }),
+        success: Schema.Void,
+        error: [CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire],
+      }),
       HttpApiEndpoint.put("insert", "/:db/_local/:docid", {
         params: Schema.Struct({ db: Schema.String, docid: Schema.String }),
         payload: Schema.Unknown,
@@ -65,6 +70,21 @@ export namespace CouchDbLocalDocument {
       const client = yield* connect(Api);
       return LocalDocument.of({
         get: (db, docid) => client.get({ params: { db, docid }, query: {} }),
+        // A successful HEAD means the local document exists; a 404 is the
+        // negative answer rather than an error. CouchDB sends no body on a HEAD,
+        // so a miss arrives as a raw 404 status code, not a decoded CenoNotFound.
+        exists: (db, docid) =>
+          client.exists({ params: { db, docid } }).pipe(
+            Effect.as(true),
+            Effect.catchTag("CenoNotFound", () => Effect.succeed(false)),
+            Effect.catchIf(
+              (error) =>
+                error._tag === "HttpClientError" &&
+                error.reason._tag === "StatusCodeError" &&
+                error.reason.response.status === 404,
+              () => Effect.succeed(false),
+            ),
+          ),
         insert: (db, docid, body, opts) =>
           client.insert({
             params: { db, docid },

@@ -33,7 +33,7 @@ const program = Effect.gen(function* () {
   const { uuids } = yield* server.uuids({ count: 3 });
   console.log("Generated UUIDs:", uuids);
 
-  const session = yield* server.session;
+  const session = yield* server.session.current;
   console.log("Current user:", session.userCtx.name);
   console.log("Roles:", session.userCtx.roles.join(", "));
 });

@@ -146,103 +146,110 @@ export namespace DesignDocument {
       db: string,
       ddoc: string,
     ) => Effect.Effect<DesignDocumentInfoResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
-    /** Queries a view via GET. */
-    readonly view: (
-      db: string,
-      ddoc: string,
-      viewname: string,
-      options?: DesignDocumentViewParams,
-    ) => Effect.Effect<
-      DesignDocumentViewResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
-    >;
-    /** Queries a view via POST (supports keys in body). */
-    readonly viewPost: (
-      db: string,
-      ddoc: string,
-      viewname: string,
-      body: unknown,
-    ) => Effect.Effect<
-      DesignDocumentViewResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
-    >;
-    /** Streams view results as decoded text. */
-    readonly viewStream: (
-      db: string,
-      ddoc: string,
-      viewname: string,
-      options?: DesignDocumentViewParams,
-    ) => Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
-    /** Queries a full-text search index (requires Clouseau plugin). */
-    readonly search: (
-      db: string,
-      ddoc: string,
-      index: string,
-      options?: DesignDocumentSearchParams,
-    ) => Effect.Effect<
-      DesignDocumentSearchResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-    >;
-    /** Streams search results as decoded text (requires Clouseau plugin). */
-    readonly searchStream: (
-      db: string,
-      ddoc: string,
-      index: string,
-      options?: DesignDocumentSearchParams,
-    ) => Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
-    /** Renders a document through a show function (deprecated in CouchDB 3.0). */
-    readonly show: (
-      db: string,
-      ddoc: string,
-      func: string,
-      docid: string,
-    ) => Effect.Effect<
-      unknown,
-      CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-    >;
-    /** Applies an update handler to an existing document (deprecated in CouchDB 3.0). */
-    readonly updateHandler: (
-      db: string,
-      ddoc: string,
-      func: string,
-      docid: string,
-      body: unknown,
-    ) => Effect.Effect<
-      unknown,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-    >;
-    /** Applies a list function to a view (deprecated in CouchDB 3.0). */
-    readonly viewWithList: (
-      db: string,
-      ddoc: string,
-      list: string,
-      viewname: string,
-      options?: DesignDocumentViewParams,
-    ) => Effect.Effect<
-      unknown,
-      CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-    >;
-    /** Queries a view within a partition. */
-    readonly partitionedView: (
-      db: string,
-      partition: string,
-      ddoc: string,
-      viewname: string,
-      options?: DesignDocumentViewParams,
-    ) => Effect.Effect<
-      DesignDocumentViewResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
-    >;
-    /** Queries a search index within a partition (requires Clouseau plugin). */
-    readonly partitionedSearch: (
-      db: string,
-      partition: string,
-      ddoc: string,
-      index: string,
-      options?: DesignDocumentSearchParams,
-    ) => Effect.Effect<
-      DesignDocumentSearchResponse,
-      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
-    >;
+    /** Queries a view: GET with params, POST with a body (keys), or a decoded-text stream via `stream: true`. */
+    readonly view: {
+      (
+        db: string,
+        ddoc: string,
+        viewname: string,
+        options?: DesignDocumentViewParams,
+      ): Effect.Effect<
+        DesignDocumentViewResponse,
+        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
+      >;
+      (
+        db: string,
+        ddoc: string,
+        viewname: string,
+        options: DesignDocumentViewParams & { stream: true },
+      ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
+      (
+        db: string,
+        ddoc: string,
+        viewname: string,
+        body: unknown,
+      ): Effect.Effect<
+        DesignDocumentViewResponse,
+        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
+      >;
+    };
+    /** Queries a full-text search index (requires Clouseau plugin); pass `stream: true` for a decoded-text stream. */
+    readonly search: {
+      (
+        db: string,
+        ddoc: string,
+        index: string,
+        options?: DesignDocumentSearchParams,
+      ): Effect.Effect<
+        DesignDocumentSearchResponse,
+        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+      >;
+      (
+        db: string,
+        ddoc: string,
+        index: string,
+        options: DesignDocumentSearchParams & { stream: true },
+      ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
+    };
+    /** Legacy render functions executed server-side (all deprecated in CouchDB 3.0). */
+    readonly render: {
+      /** Renders a document through a show function. */
+      readonly show: (
+        db: string,
+        ddoc: string,
+        func: string,
+        docid: string,
+      ) => Effect.Effect<
+        unknown,
+        CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+      >;
+      /** Applies an update handler to an existing document. */
+      readonly update: (
+        db: string,
+        ddoc: string,
+        func: string,
+        docid: string,
+        body: unknown,
+      ) => Effect.Effect<
+        unknown,
+        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+      >;
+      /** Applies a list function to a view. */
+      readonly list: (
+        db: string,
+        ddoc: string,
+        list: string,
+        viewname: string,
+        options?: DesignDocumentViewParams,
+      ) => Effect.Effect<
+        unknown,
+        CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+      >;
+    };
+    /** Queries views and search indexes scoped to a single partition. */
+    readonly partition: {
+      /** Queries a view within a partition. */
+      readonly view: (
+        db: string,
+        partition: string,
+        ddoc: string,
+        viewname: string,
+        options?: DesignDocumentViewParams,
+      ) => Effect.Effect<
+        DesignDocumentViewResponse,
+        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
+      >;
+      /** Queries a search index within a partition (requires Clouseau plugin). */
+      readonly search: (
+        db: string,
+        partition: string,
+        ddoc: string,
+        index: string,
+        options?: DesignDocumentSearchParams,
+      ) => Effect.Effect<
+        DesignDocumentSearchResponse,
+        CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoInternalServerError | TransportError
+      >;
+    };
   }
 }

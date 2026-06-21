@@ -200,7 +200,7 @@ export namespace SchemaDocument {
             })),
           ),
         bulk: (d, docs) =>
-          Effect.flatMap(Effect.all(docs.map((doc) => encode(doc))), (encoded) => document.bulk(d, encoded)),
+          Effect.flatMap(Effect.all(docs.map((doc) => encode(doc))), (encoded) => document.bulk.write(d, encoded)),
       };
 
       return {
