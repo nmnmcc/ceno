@@ -51,7 +51,7 @@ export const DesignDocumentSearchResponse = Schema.Struct({
 });
 export type DesignDocumentSearchResponse = typeof DesignDocumentSearchResponse.Type;
 
-/** Design document index metadata from `GET /{db}/_design/{ddoc}/_info`. */
+/** Index metadata for a design document's views. */
 export const DesignDocumentInfoResponse = Schema.Struct({
   name: Schema.String,
   view_index: Schema.Struct({
@@ -133,7 +133,7 @@ export interface DesignDocumentSearchParams {
 // Service
 // ---------------------------------------------------------------------------
 
-/** CouchDB design document operations (views, search, show/update/list functions). */
+/** Design document operations: views, search, and show/update/list functions. */
 export class DesignDocument extends Context.Service<DesignDocument, DesignDocument.DesignDocument>()(
   "@ceno/core/DesignDocument",
 ) {}
@@ -146,7 +146,7 @@ export namespace DesignDocument {
       db: string,
       ddoc: string,
     ) => Effect.Effect<DesignDocumentInfoResponse, CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
-    /** Queries a view: GET with params, POST with a body (keys), or a decoded-text stream via `stream: true`. */
+    /** Queries a view by options, by an explicit set of keys, or as a decoded-text stream via `stream: true`. */
     readonly view: {
       (
         db: string,
@@ -173,7 +173,7 @@ export namespace DesignDocument {
         CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
       >;
     };
-    /** Queries a full-text search index (requires Clouseau plugin); pass `stream: true` for a decoded-text stream. */
+    /** Queries a full-text search index, when the backend provides one; pass `stream: true` for a decoded-text stream. */
     readonly search: {
       (
         db: string,
@@ -191,7 +191,7 @@ export namespace DesignDocument {
         options: DesignDocumentSearchParams & { stream: true },
       ): Effect.Effect<Stream.Stream<string, HttpClientError.HttpClientError>, TransportError>;
     };
-    /** Legacy render functions executed server-side (all deprecated in CouchDB 3.0). */
+    /** Legacy render functions executed server-side. */
     readonly render: {
       /** Renders a document through a show function. */
       readonly show: (
@@ -239,7 +239,7 @@ export namespace DesignDocument {
         DesignDocumentViewResponse,
         CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
       >;
-      /** Queries a search index within a partition (requires Clouseau plugin). */
+      /** Queries a search index within a partition, when the backend provides one. */
       readonly search: (
         db: string,
         partition: string,

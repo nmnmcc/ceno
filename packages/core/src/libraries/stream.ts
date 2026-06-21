@@ -1,6 +1,6 @@
 import { Schema, Stream } from "effect";
 
-/** Parse an NDJSON byte stream into schema-validated elements. For endpoints like `_changes?feed=continuous`. */
+/** Parse an NDJSON byte stream into schema-validated elements. Used for continuous feeds such as database changes. */
 export const parseNdjsonStream =
   <S extends Schema.Top>(schema: S) =>
   <E, R>(

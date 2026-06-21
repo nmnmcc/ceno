@@ -2,7 +2,7 @@ import { Schema } from "effect";
 import type { HttpClientError } from "effect/unstable/http";
 
 // ---------------------------------------------------------------------------
-// CouchDB error classes — Schema.TaggedErrorClass for catchTag + Schema use
+// Domain error classes — Schema.TaggedErrorClass for catchTag + Schema use
 // ---------------------------------------------------------------------------
 
 /** Invalid database name. */
@@ -26,18 +26,18 @@ export class CenoForbidden extends Schema.TaggedErrorClass<CenoForbidden>()("Cen
   reason: Schema.String,
 }) {}
 
-/** Database, document, or design doc not found. */
+/** Requested database, document, or design document does not exist. */
 export class CenoNotFound extends Schema.TaggedErrorClass<CenoNotFound>()("CenoNotFound", { reason: Schema.String }) {}
 
 /** Document revision conflict. */
 export class CenoConflict extends Schema.TaggedErrorClass<CenoConflict>()("CenoConflict", { reason: Schema.String }) {}
 
-/** Database already exists (412 `file_exists`). */
+/** Database already exists. */
 export class CenoAlreadyExists extends Schema.TaggedErrorClass<CenoAlreadyExists>()("CenoAlreadyExists", {
   reason: Schema.String,
 }) {}
 
-/** Wrong Content-Type (not `application/json`). */
+/** Request payload was sent in an unsupported format. */
 export class CenoBadContentType extends Schema.TaggedErrorClass<CenoBadContentType>()("CenoBadContentType", {
   reason: Schema.String,
 }) {}
@@ -52,7 +52,7 @@ export class CenoInternalServerError extends Schema.TaggedErrorClass<CenoInterna
 // Transport / aggregate types
 // ---------------------------------------------------------------------------
 
-/** Transport-level or decoding failure from the underlying HTTP layer. */
+/** Transport-level or decoding failure from the underlying backend. */
 export type TransportError = HttpClientError.HttpClientError | Schema.SchemaError;
 
 /** Union of all ceno domain errors. */

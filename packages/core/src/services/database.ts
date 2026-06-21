@@ -17,17 +17,17 @@ import type {
 // Schemas
 // ---------------------------------------------------------------------------
 
-/** Generic `{"ok": true}` response. */
+/** Generic acknowledgement that an operation succeeded. */
 export const OkResponse = Schema.Struct({ ok: Schema.Boolean });
 export type OkResponse = typeof OkResponse.Type;
 
-/** Response from `PUT /{db}` (create database). */
+/** Acknowledgement that a database was created. */
 export const DatabaseCreateResponse = Schema.Struct({
   ok: Schema.Boolean,
 });
 export type DatabaseCreateResponse = typeof DatabaseCreateResponse.Type;
 
-/** Database metadata from `GET /{db}`. */
+/** Database metadata: document counts, sizes, and storage details. */
 export const DatabaseGetResponse = Schema.Struct({
   cluster: Schema.Struct({
     n: Schema.Number,
@@ -52,7 +52,7 @@ export const DatabaseGetResponse = Schema.Struct({
 });
 export type DatabaseGetResponse = typeof DatabaseGetResponse.Type;
 
-/** Single entry from `GET /{db}/_changes`. */
+/** A single entry in a database changes feed. */
 export const DatabaseChangesResultItem = Schema.Struct({
   changes: Schema.Array(Schema.Struct({ rev: Schema.String })),
   id: Schema.String,
@@ -69,7 +69,7 @@ export const DatabaseChangesResponse = Schema.Struct({
 });
 export type DatabaseChangesResponse = typeof DatabaseChangesResponse.Type;
 
-/** Single event from `GET /_db_updates`. */
+/** A single database-level update event. */
 const DatabaseUpdatesResultItem = Schema.Struct({
   db_name: Schema.String,
   type: Schema.String,
@@ -114,14 +114,14 @@ export type DatabaseReplicateResponse = typeof DatabaseReplicateResponse.Type;
 // Parameter Types
 // ---------------------------------------------------------------------------
 
-/** Params for `PUT /{db}` (create database). */
+/** Options for creating a database. */
 export interface DatabaseCreateParams {
   readonly n?: number;
   readonly partitioned?: boolean;
   readonly q?: number;
 }
 
-/** Params for `GET /{db}/_changes`. */
+/** Options for reading a database changes feed. */
 export interface DatabaseChangesParams {
   readonly doc_ids?: readonly string[];
   readonly conflicts?: boolean;
@@ -140,7 +140,7 @@ export interface DatabaseChangesParams {
   readonly seq_interval?: number;
 }
 
-/** Options for `POST /_replicate`. */
+/** Options for starting a replication between two databases. */
 export interface DatabaseReplicateOptions {
   readonly cancel?: boolean;
   readonly continuous?: boolean;
@@ -156,7 +156,7 @@ export interface DatabaseReplicateOptions {
   readonly winning_revs_only?: boolean;
 }
 
-/** Params for `GET /_db_updates`. */
+/** Options for subscribing to global database update events. */
 export interface UpdatesParams {
   readonly feed?: "normal" | "longpoll" | "continuous" | "eventsource";
   readonly timeout?: number;
@@ -164,7 +164,7 @@ export interface UpdatesParams {
   readonly since?: string;
 }
 
-/** Params for `GET /_all_dbs` and `GET /_dbs_info`. */
+/** Options for listing or looking up databases. */
 export interface DatabaseListParams {
   readonly descending?: boolean;
   readonly endkey?: string;
@@ -186,21 +186,21 @@ const SecurityAcl = Schema.Struct({
   roles: Schema.optional(Schema.Array(Schema.String)),
 });
 
-/** Database security object from `GET /{db}/_security`. */
+/** A database's admins and members access lists. */
 export const SecurityObject = Schema.Struct({
   admins: Schema.optional(SecurityAcl),
   members: Schema.optional(SecurityAcl),
 });
 export type SecurityObject = typeof SecurityObject.Type;
 
-/** Single item from `GET/POST /_dbs_info`. */
+/** Metadata for a single database in a multi-database lookup. */
 const DbsInfoItem = Schema.Struct({
   key: Schema.String,
   info: Schema.NullOr(Schema.Unknown),
   error: Schema.optional(Schema.String),
 });
 
-/** Response from `GET/POST /_dbs_info`. */
+/** Metadata for multiple databases requested together. */
 export const DbsInfoResponse = Schema.Array(DbsInfoItem);
 export type DbsInfoResponse = typeof DbsInfoResponse.Type;
 
@@ -208,7 +208,7 @@ export type DbsInfoResponse = typeof DbsInfoResponse.Type;
 // Service
 // ---------------------------------------------------------------------------
 
-/** CouchDB database management operations (create, delete, compact, replicate, changes, security, maintenance). */
+/** Database management operations: create, delete, compact, replicate, changes, security, and maintenance. */
 export class Database extends Context.Service<Database, Database.Database>()("@ceno/core/Database") {}
 
 export namespace Database {
@@ -223,7 +223,7 @@ export namespace Database {
       CenoIllegalDatabaseName | CenoUnauthorized | CenoForbidden | CenoAlreadyExists | TransportError
     >;
 
-    /** Checks whether a database exists (HEAD request). */
+    /** Checks whether a database exists. */
     readonly exists: (name: string) => Effect.Effect<boolean, CenoUnauthorized | CenoForbidden | TransportError>;
 
     /** Deletes a database. */
@@ -239,7 +239,7 @@ export namespace Database {
       options?: DatabaseListParams,
     ) => Effect.Effect<readonly string[], CenoUnauthorized | CenoForbidden | TransportError>;
 
-    /** Retrieves metadata for multiple databases in a single request (GET). */
+    /** Retrieves metadata for one or more databases. */
     readonly info: {
       (
         name: string,
@@ -259,7 +259,7 @@ export namespace Database {
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoBadContentType | TransportError
     >;
 
-    /** Removes unused view index files (POST). */
+    /** Removes unused view index files. */
     readonly viewCleanup: (
       name: string,
     ) => Effect.Effect<void, CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | TransportError>;
@@ -327,7 +327,7 @@ export namespace Database {
     >;
 
     readonly changes: {
-      /** Retrieves the changes feed for a database (GET). */
+      /** Retrieves the changes feed for a database. */
       (
         name: string,
         options?: DatabaseChangesParams,
@@ -340,7 +340,7 @@ export namespace Database {
         Stream.Stream<DatabaseChangesResultItem, HttpClientError.HttpClientError | Schema.SchemaError>,
         TransportError
       >;
-      /** Retrieves the changes feed for a database via POST (supports doc_ids/selector in body). */
+      /** Retrieves the changes feed, filtered by an explicit set of document IDs or a selector. */
       (
         name: string,
         body: unknown,

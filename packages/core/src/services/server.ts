@@ -7,7 +7,7 @@ import type { CenoBadRequest, CenoForbidden, CenoUnauthorized, TransportError } 
 // Schemas
 // ---------------------------------------------------------------------------
 
-/** Server metadata from `GET /`. */
+/** Server identity and capability metadata. */
 export const InfoResponse = Schema.Struct({
   couchdb: Schema.String,
   version: Schema.String,
@@ -18,13 +18,13 @@ export const InfoResponse = Schema.Struct({
 });
 export type InfoResponse = typeof InfoResponse.Type;
 
-/** UUID list from `GET /_uuids`. */
+/** A batch of server-generated unique identifiers. */
 export const UUIDObject = Schema.Struct({
   uuids: Schema.Array(Schema.String),
 });
 export type UUIDObject = typeof UUIDObject.Type;
 
-/** Cookie auth response from `POST /_session`. */
+/** Result of establishing an authenticated session. */
 export const DatabaseAuthResponse = Schema.Struct({
   ok: Schema.Boolean,
   name: Schema.String,
@@ -32,7 +32,7 @@ export const DatabaseAuthResponse = Schema.Struct({
 });
 export type DatabaseAuthResponse = typeof DatabaseAuthResponse.Type;
 
-/** Session info from `GET /_session`. */
+/** Details of the current authenticated session. */
 export const DatabaseSessionResponse = Schema.Struct({
   ok: Schema.Boolean,
   userCtx: Schema.Struct({
@@ -51,13 +51,13 @@ export type DatabaseSessionResponse = typeof DatabaseSessionResponse.Type;
 // Service
 // ---------------------------------------------------------------------------
 
-/** CouchDB server-level operations (metadata, UUIDs, authentication). */
+/** Server-level operations: metadata, identifier generation, and authentication. */
 export class Server extends Context.Service<Server, Server.Server>()("@ceno/core/Server") {}
 
 export namespace Server {
-  /** Service shape for server-level CouchDB operations. */
+  /** Service shape for server-level operations. */
   export interface Server {
-    /** Retrieves CouchDB server metadata. */
+    /** Retrieves server identity and capability metadata. */
     readonly info: Effect.Effect<InfoResponse, CenoUnauthorized | CenoForbidden | TransportError>;
     /** Generates one or more UUIDs on the server. */
     readonly uuids: (options?: {

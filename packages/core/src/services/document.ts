@@ -33,7 +33,7 @@ export const DocumentDestroyResponse = Schema.Struct({
 });
 export type DocumentDestroyResponse = typeof DocumentDestroyResponse.Type;
 
-/** Single result from `_bulk_docs`. */
+/** Per-document result from a bulk write. */
 export const DocumentBulkResponse = Schema.Struct({
   id: Schema.String,
   ok: Schema.optional(Schema.Boolean),
@@ -43,7 +43,7 @@ export const DocumentBulkResponse = Schema.Struct({
 });
 export type DocumentBulkResponse = typeof DocumentBulkResponse.Type;
 
-/** Row from `_all_docs` with optional doc body. */
+/** A single listed document, optionally including its body. */
 export const DocumentResponseRow = Schema.Struct({
   id: Schema.String,
   key: Schema.String,
@@ -53,7 +53,7 @@ export const DocumentResponseRow = Schema.Struct({
 });
 export type DocumentResponseRow = typeof DocumentResponseRow.Type;
 
-/** Response from `_all_docs` and `_local_docs`. CouchDB returns `null` for `offset`/`total_rows` on `_local_docs`. */
+/** A page of listed documents; `offset` and `total_rows` may be absent for some listings. */
 export const DocumentListResponse = Schema.Struct({
   offset: Schema.NullOr(Schema.Number),
   rows: Schema.Array(DocumentResponseRow),
@@ -62,13 +62,13 @@ export const DocumentListResponse = Schema.Struct({
 });
 export type DocumentListResponse = typeof DocumentListResponse.Type;
 
-/** Lookup failure from `_all_docs` fetch. */
+/** A key that could not be resolved during a bulk fetch. */
 const DocumentLookupFailure = Schema.Struct({
   key: Schema.String,
   error: Schema.String,
 });
 
-/** Response from `_all_docs` fetch. CouchDB returns `null` for `offset`/`total_rows` on `_local_docs`. */
+/** Result of fetching documents by an explicit set of keys. */
 export const DocumentFetchResponse = Schema.Struct({
   offset: Schema.NullOr(Schema.Number),
   rows: Schema.Array(Schema.Union([DocumentResponseRow, DocumentLookupFailure])),
@@ -126,7 +126,7 @@ const BulkGetResultDoc = Schema.Union([
   }),
 ]);
 
-/** Response from `POST /{db}/_bulk_get`. */
+/** Result of retrieving many documents by ID in a single request. */
 export const BulkGetResponse = Schema.Struct({
   results: Schema.Array(
     Schema.Struct({
@@ -137,7 +137,7 @@ export const BulkGetResponse = Schema.Struct({
 });
 export type BulkGetResponse = typeof BulkGetResponse.Type;
 
-/** Index entry from `GET /{db}/_index`. */
+/** A single defined query index. */
 const IndexDef = Schema.Struct({
   ddoc: Schema.NullOr(Schema.String),
   name: Schema.String,
@@ -146,14 +146,14 @@ const IndexDef = Schema.Struct({
   partitioned: Schema.optional(Schema.Boolean),
 });
 
-/** Response from `GET /{db}/_index`. */
+/** The set of query indexes defined on a database. */
 export const IndexListResponse = Schema.Struct({
   total_rows: Schema.Number,
   indexes: Schema.Array(IndexDef),
 });
 export type IndexListResponse = typeof IndexListResponse.Type;
 
-/** Response from `POST /{db}/_explain`. */
+/** The query plan describing how a query would be executed. */
 export const ExplainResponse = Schema.Unknown;
 export type ExplainResponse = typeof ExplainResponse.Type;
 
@@ -161,19 +161,19 @@ export type ExplainResponse = typeof ExplainResponse.Type;
 // Parameter Types
 // ---------------------------------------------------------------------------
 
-/** Params for inserting a document via POST (server-assigned ID). */
+/** Options for inserting a document with a server-assigned ID. */
 export interface DocumentInsertParams {
   readonly batch?: "ok";
 }
 
-/** Params for creating or updating a document at a specific ID via PUT. */
+/** Options for creating or updating a document at a specific ID. */
 export interface DocumentPutParams {
   readonly rev?: string;
   readonly batch?: "ok";
   readonly new_edits?: boolean;
 }
 
-/** Params for getting a document. */
+/** Options for retrieving a document. */
 export interface DocumentGetParams {
   readonly attachments?: boolean;
   readonly att_encoding_info?: boolean;
@@ -189,7 +189,7 @@ export interface DocumentGetParams {
   readonly revs_info?: boolean;
 }
 
-/** Params for `_all_docs` listing. */
+/** Options for listing documents. */
 export interface DocumentListParams {
   readonly conflicts?: boolean;
   readonly descending?: boolean;
@@ -209,7 +209,7 @@ export interface DocumentListParams {
   readonly update_seq?: boolean;
 }
 
-/** Params for `_all_docs` fetch. */
+/** Options for fetching documents by an explicit set of keys. */
 export interface DocumentFetchParams {
   readonly conflicts?: boolean;
   readonly descending?: boolean;
@@ -264,12 +264,12 @@ export interface CreateIndexRequest {
   readonly partitioned?: boolean;
 }
 
-/** Wrapper for `_bulk_docs` insert. */
+/** Request body wrapping the documents to write in bulk. */
 export interface BulkModifyDocsWrapper {
   readonly docs: readonly unknown[];
 }
 
-/** Wrapper for `_all_docs` bulk fetch. */
+/** Request body wrapping the keys to fetch in bulk. */
 export interface BulkFetchDocsWrapper {
   readonly keys: readonly string[];
 }
@@ -280,24 +280,24 @@ export interface MaybeDocument {
   readonly _rev?: string;
 }
 
-/** Params for `_bulk_get`. */
+/** A single document reference in a bulk get request. */
 export interface BulkGetDoc {
   readonly id: string;
   readonly rev?: string;
   readonly atts_since?: readonly string[];
 }
 
-/** Params for document delete. */
+/** Options for deleting a document. */
 export interface DocumentDestroyParams {
   readonly batch?: "ok";
 }
 
-/** Params for attachment GET. */
+/** Options for downloading an attachment. */
 export interface AttachmentGetParams {
   readonly rev?: string;
 }
 
-/** Params for attachment DELETE. */
+/** Options for deleting an attachment. */
 export interface AttachmentDestroyParams {
   readonly batch?: "ok";
 }
@@ -306,7 +306,7 @@ export interface AttachmentDestroyParams {
 // Service
 // ---------------------------------------------------------------------------
 
-/** CouchDB document CRUD, bulk operations, Mango queries, and attachments. */
+/** Document operations: CRUD, bulk reads and writes, queries, and attachments. */
 export class Document extends Context.Service<Document, Document.Document>()("@ceno/core/Document") {}
 
 export namespace Document {
@@ -381,7 +381,7 @@ export namespace Document {
       Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
       CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError
     >;
-    /** Checks whether an attachment exists (HEAD request). */
+    /** Checks whether an attachment exists. */
     readonly exists: (
       db: string,
       docid: string,
@@ -424,7 +424,7 @@ export namespace Document {
     >;
   }
 
-  /** Service shape for document-level CouchDB operations. */
+  /** Service shape for document-level operations. */
   export interface Document {
     /** Creates a database-scoped view of these operations, removing the `db` parameter from every method. */
     readonly in: (db: string) => DatabaseDocument;
@@ -453,7 +453,7 @@ export namespace Document {
       docid: string,
       options?: DocumentGetParams,
     ) => Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
-    /** Checks whether a document exists (HEAD request). */
+    /** Checks whether a document exists. */
     readonly exists: (
       db: string,
       docid: string,

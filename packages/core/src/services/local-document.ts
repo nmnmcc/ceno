@@ -19,7 +19,7 @@ import type {
 // Service
 // ---------------------------------------------------------------------------
 
-/** CouchDB local document operations. Local documents are not replicated. */
+/** Local document operations. Local documents are not replicated. */
 export class LocalDocument extends Context.Service<LocalDocument, LocalDocument.LocalDocument>()(
   "@ceno/core/LocalDocument",
 ) {}
@@ -32,7 +32,7 @@ export namespace LocalDocument {
       db: string,
       docid: string,
     ) => Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoNotFound | TransportError>;
-    /** Checks whether a local document exists (HEAD request). */
+    /** Checks whether a local document exists. */
     readonly exists: (
       db: string,
       docid: string,
