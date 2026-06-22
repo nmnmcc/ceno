@@ -7,13 +7,13 @@
  */
 
 import { Database, Document } from "@ceno/core";
-import { CouchDbClient, layer } from "@ceno/couchdb";
+import { Client, CouchDB } from "@ceno/couchdb";
 import { Effect, Fiber, Layer, Redacted, Stream } from "effect";
 import { FetchHttpClient } from "effect/unstable/http";
 
-const CenoLayer = layer.pipe(
+const CenoLayer = CouchDB.layer.pipe(
   Layer.provide(
-    CouchDbClient.layer({
+    Client.layer({
       url: process.env["COUCHDB_URL"] ?? "http://localhost:5984",
       username: process.env["COUCHDB_USER"] ?? "admin",
       password: Redacted.make(process.env["COUCHDB_PASSWORD"] ?? "admin"),
@@ -23,8 +23,8 @@ const CenoLayer = layer.pipe(
 );
 
 const program = Effect.gen(function* () {
-  const database = yield* Database;
-  const docs = (yield* Document).in("example-changes");
+  const database = yield* Database.Database;
+  const docs = (yield* Document.Document).in("example-changes");
   yield* database.create("example-changes");
 
   yield* docs.put("doc-1", { message: "hello" });

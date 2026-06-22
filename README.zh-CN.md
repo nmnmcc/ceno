@@ -58,8 +58,7 @@ program.pipe(
 
 | 包                                    | 说明                                                                 |
 | ------------------------------------- | -------------------------------------------------------------------- |
-| [`@ceno/core`](./packages/core)       | 后端无关的服务契约、Schema 和错误类型                                |
-| [`@ceno/schema`](./packages/schema)   | 基于 `@ceno/core` 的 Schema 感知、带版本迁移的文档操作               |
+| [`@ceno/core`](./packages/core)       | 后端无关的服务契约、Schema、错误类型及 Schema 感知文档操作           |
 | [`@ceno/couchdb`](./packages/couchdb) | CouchDB HTTP 实现——**[完整 API 文档](./packages/couchdb/README.md)** |
 
 ## 示例

@@ -8,15 +8,14 @@
  *   yarn start
  */
 
-import { Database, LocalDocument } from "@ceno/core";
-import { CouchDbClient, layer } from "@ceno/couchdb";
-import { SchemaLocalDocument, version } from "@ceno/schema";
+import { Database, LocalDocument, SchemaLocalDocument, Version } from "@ceno/core";
+import { Client, CouchDB } from "@ceno/couchdb";
 import { Effect, Layer, Redacted, Schema } from "effect";
 import { FetchHttpClient } from "effect/unstable/http";
 
-const CenoLayer = layer.pipe(
+const CenoLayer = CouchDB.layer.pipe(
   Layer.provide(
-    CouchDbClient.layer({
+    Client.layer({
       url: process.env["COUCHDB_URL"] ?? "http://localhost:5984",
       username: process.env["COUCHDB_USER"] ?? "admin",
       password: Redacted.make(process.env["COUCHDB_PASSWORD"] ?? "admin"),
@@ -26,8 +25,8 @@ const CenoLayer = layer.pipe(
 );
 
 const program = Effect.gen(function* () {
-  const database = yield* Database;
-  const local = yield* LocalDocument;
+  const database = yield* Database.Database;
+  const local = yield* LocalDocument.LocalDocument;
   const db = "example-local";
   yield* database.create(db);
 
@@ -55,8 +54,8 @@ const program = Effect.gen(function* () {
 
   // --- SchemaLocalDocument: typed local documents with migration ---
 
-  const ConfigV1 = version({ theme: Schema.String });
-  const ConfigV2 = version({
+  const ConfigV1 = Version.version({ theme: Schema.String });
+  const ConfigV2 = Version.version({
     from: ConfigV1,
     to: { theme: Schema.String, fontSize: Schema.Number },
     migrate: (v1) => ({ theme: v1.theme, fontSize: 14 }),

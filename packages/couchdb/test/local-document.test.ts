@@ -1,4 +1,5 @@
-import { Document, LocalDocument } from "@ceno/core";
+import { Document } from "@ceno/core/Document";
+import { LocalDocument } from "@ceno/core/LocalDocument";
 import { describe, it } from "@effect/vitest";
 import { strictEqual } from "@effect/vitest/utils";
 import { Effect } from "effect";

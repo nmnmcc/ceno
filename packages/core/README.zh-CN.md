@@ -20,6 +20,9 @@ npm install @ceno/core effect
   - [DesignDocument](#designdocument)
   - [LocalDocument](#localdocument)
 - [错误处理](#错误处理)
+- [SchemaDocument](#schemadocument)
+- [SchemaLocalDocument](#schemalocaldocument)
+- [版本迁移](#版本迁移)
 - [工具函数](#工具函数)
   - [parseNdjsonStream](#parsenjsonstream)
 - [许可证](#许可证)
@@ -158,7 +161,7 @@ program.pipe(Effect.provide(layer) /* ... */);
 | `list(db)`                          | 列出所有本地文档（`GET /{db}/_local_docs`）      |
 | `fetch(db, body)`                   | 按键获取指定本地文档（`POST /{db}/_local_docs`） |
 
-> `Document` 和 `LocalDocument` 服务接受和返回 `unknown`。如需类型化、带版本迁移的文档操作（`SchemaDocument`、`SchemaLocalDocument`、`version`），请参阅 [`@ceno/schema`](../schema)。
+> `Document` 和 `LocalDocument` 服务接受和返回 `unknown`。如需类型化、带版本迁移的文档操作，请参阅下方 [SchemaDocument](#schemadocument) 和 [SchemaLocalDocument](#schemalocaldocument)。
 
 ## 错误处理
 
@@ -195,6 +198,102 @@ const program = Effect.gen(function* () {
 
 - `CenoError` — 所有九种错误类的联合类型
 - `TransportError` — `HttpClientError | Schema.SchemaError`
+
+## SchemaDocument
+
+以 Effect Schema 字段定义文档结构，然后用 `SchemaDocument.make` 创建类型化的访问器。它会从上下文中解析 `Document`，因此运行程序时需提供后端层。
+
+```typescript
+import { SchemaDocument } from "@ceno/core";
+import { Effect, Schema } from "effect";
+
+const TodoFields = {
+  title: Schema.String,
+  done: Schema.Boolean,
+};
+
+const program = Effect.gen(function* () {
+  const todos = yield* SchemaDocument.make(TodoFields);
+
+  yield* todos.put("mydb", "todo-1", { title: "Buy milk", done: false });
+  const todo = yield* todos.get("mydb", "todo-1");
+  const result = yield* todos.find("mydb", { selector: { done: { $eq: false } } });
+  yield* todos.bulk("mydb", [
+    { title: "Walk dog", done: false },
+    { title: "Read book", done: true },
+  ]);
+});
+```
+
+| 方法                             | 说明                            |
+| -------------------------------- | ------------------------------- |
+| `get(db, docid, options?)`       | 获取并解码文档                  |
+| `insert(db, body, options?)`     | 编码并插入文档                  |
+| `put(db, docid, body, options?)` | 编码并创建/更新文档             |
+| `find(db, query)`                | 执行 Mango 查询并返回类型化结果 |
+| `bulk(db, docs)`                 | 批量插入并进行类型检查          |
+| `in(db)`                         | 将所有方法限定到单个数据库      |
+
+调用 `.in(db)` 可以获得无需在每次调用时传入 `db` 的访问器：
+
+```typescript
+const todos = (yield* SchemaDocument.make(TodoFields)).in("mydb");
+yield* todos.put("todo-1", { title: "Buy milk", done: false });
+```
+
+## SchemaLocalDocument
+
+`SchemaLocalDocument` 以相同方式用于本地（不复制的）文档，并从上下文中解析 `LocalDocument`：
+
+```typescript
+import { SchemaLocalDocument } from "@ceno/core";
+import { Effect, Schema } from "effect";
+
+const ConfigFields = { checkpoint: Schema.String, lastSync: Schema.Number };
+
+const program = Effect.gen(function* () {
+  const configs = (yield* SchemaLocalDocument.make(ConfigFields)).in("mydb");
+  yield* configs.insert("sync-state", { checkpoint: "abc", lastSync: 1719792000 });
+  const state = yield* configs.get("sync-state");
+});
+```
+
+| 方法                                | 说明                       |
+| ----------------------------------- | -------------------------- |
+| `get(db, docid)`                    | 获取并解码本地文档         |
+| `insert(db, docid, body, options?)` | 编码并创建/更新本地文档    |
+| `in(db)`                            | 将所有方法限定到单个数据库 |
+
+## 版本迁移
+
+当 Schema 发生变更时，定义一个版本链。`SchemaDocument` 在读取时自动迁移旧文档：
+
+```typescript
+import { SchemaDocument, version } from "@ceno/core";
+import { Effect, Schema } from "effect";
+
+const V1 = version({ title: Schema.String });
+
+const V2 = version({
+  from: V1,
+  to: { title: Schema.String, priority: Schema.Number },
+  migrate: (v1) => ({ title: v1.title, priority: 0 }),
+});
+
+const program = Effect.gen(function* () {
+  const docs = yield* SchemaDocument.make(V2);
+  const doc = yield* docs.get("mydb", "old-doc");
+  console.log(doc.priority); // 0（来自 V2 迁移）
+});
+```
+
+| 导出                           | 说明                                                  |
+| ------------------------------ | ----------------------------------------------------- |
+| `version(fields \| migration)` | 从普通字段或迁移定义 `{ from, to, migrate }` 创建版本 |
+| `migrate(data, version)`       | 通过版本链解码数据，按需应用迁移                      |
+| `toSchema(version)`            | 将版本转换为 Effect `Schema`                          |
+| `isMigrateVersion(v)`          | `MigrateVersion` 的类型守卫                           |
+| `MigrateError`                 | 包含所有版本累积解码错误的标签化错误                  |
 
 ## 工具函数
 

@@ -1,4 +1,4 @@
-import { Server } from "@ceno/core";
+import { Server } from "@ceno/core/Server";
 import { describe, it } from "@effect/vitest";
 import { strictEqual } from "@effect/vitest/utils";
 import { Effect } from "effect";

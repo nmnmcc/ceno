@@ -1,4 +1,5 @@
-import { DesignDocument, Document } from "@ceno/core";
+import { DesignDocument } from "@ceno/core/DesignDocument";
+import { Document } from "@ceno/core/Document";
 import { describe, it } from "@effect/vitest";
 import { strictEqual } from "@effect/vitest/utils";
 import { Effect, Stream } from "effect";

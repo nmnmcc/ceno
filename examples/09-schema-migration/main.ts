@@ -7,15 +7,14 @@
  *   yarn start
  */
 
-import { Database, Document } from "@ceno/core";
-import { CouchDbClient, layer } from "@ceno/couchdb";
-import { SchemaDocument, version } from "@ceno/schema";
+import { Database, Document, SchemaDocument, Version } from "@ceno/core";
+import { Client, CouchDB } from "@ceno/couchdb";
 import { Effect, Layer, Redacted, Schema } from "effect";
 import { FetchHttpClient } from "effect/unstable/http";
 
-const CenoLayer = layer.pipe(
+const CenoLayer = CouchDB.layer.pipe(
   Layer.provide(
-    CouchDbClient.layer({
+    Client.layer({
       url: process.env["COUCHDB_URL"] ?? "http://localhost:5984",
       username: process.env["COUCHDB_USER"] ?? "admin",
       password: Redacted.make(process.env["COUCHDB_PASSWORD"] ?? "admin"),
@@ -25,17 +24,17 @@ const CenoLayer = layer.pipe(
 );
 
 // V1: title only
-const TaskV1 = version({ title: Schema.String });
+const TaskV1 = Version.version({ title: Schema.String });
 
 // V2: added priority (defaults to 0 for migrated v1 docs)
-const TaskV2 = version({
+const TaskV2 = Version.version({
   from: TaskV1,
   to: { title: Schema.String, priority: Schema.Number },
   migrate: (v1) => ({ title: v1.title, priority: 0 }),
 });
 
 // V3: added tags (defaults to [] for migrated v2 docs)
-const TaskV3 = version({
+const TaskV3 = Version.version({
   from: TaskV2,
   to: {
     title: Schema.String,
@@ -46,8 +45,8 @@ const TaskV3 = version({
 });
 
 const program = Effect.gen(function* () {
-  const database = yield* Database;
-  const document = yield* Document;
+  const database = yield* Database.Database;
+  const document = yield* Document.Document;
   const db = "example-migration";
   yield* database.create(db);
 

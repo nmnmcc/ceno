@@ -20,6 +20,9 @@ npm install @ceno/core effect
   - [DesignDocument](#designdocument)
   - [LocalDocument](#localdocument)
 - [Error handling](#error-handling)
+- [SchemaDocument](#schemadocument)
+- [SchemaLocalDocument](#schemalocaldocument)
+- [Version migrations](#version-migrations)
 - [Utilities](#utilities)
   - [parseNdjsonStream](#parsenjsonstream)
 - [License](#license)
@@ -158,7 +161,7 @@ Local (non-replicated) document CRUD.
 | `list(db)`                          | List all local documents (`GET /{db}/_local_docs`)                |
 | `fetch(db, body)`                   | Fetch specific local documents by keys (`POST /{db}/_local_docs`) |
 
-> The `Document` and `LocalDocument` services accept and return `unknown`. For typed, version-migrating document operations (`SchemaDocument`, `SchemaLocalDocument`, `version`), see [`@ceno/schema`](../schema).
+> The `Document` and `LocalDocument` services accept and return `unknown`. For typed, version-migrating document operations, see [SchemaDocument](#schemadocument) and [SchemaLocalDocument](#schemalocaldocument) below.
 
 ## Error handling
 
@@ -195,6 +198,102 @@ Type aliases:
 
 - `CenoError` — Union of all nine error classes
 - `TransportError` — `HttpClientError | Schema.SchemaError`
+
+## SchemaDocument
+
+Define your document shape as Effect Schema fields, then create a typed accessor with `SchemaDocument.make`. It resolves `Document` from the context, so provide a backend layer when running the program.
+
+```typescript
+import { SchemaDocument } from "@ceno/core";
+import { Effect, Schema } from "effect";
+
+const TodoFields = {
+  title: Schema.String,
+  done: Schema.Boolean,
+};
+
+const program = Effect.gen(function* () {
+  const todos = yield* SchemaDocument.make(TodoFields);
+
+  yield* todos.put("mydb", "todo-1", { title: "Buy milk", done: false });
+  const todo = yield* todos.get("mydb", "todo-1");
+  const result = yield* todos.find("mydb", { selector: { done: { $eq: false } } });
+  yield* todos.bulk("mydb", [
+    { title: "Walk dog", done: false },
+    { title: "Read book", done: true },
+  ]);
+});
+```
+
+| Method                           | Description                              |
+| -------------------------------- | ---------------------------------------- |
+| `get(db, docid, options?)`       | Retrieve and decode a document           |
+| `insert(db, body, options?)`     | Encode and insert a document             |
+| `put(db, docid, body, options?)` | Encode and create/update a document      |
+| `find(db, query)`                | Execute a Mango query with typed results |
+| `bulk(db, docs)`                 | Bulk insert with type-checked documents  |
+| `in(db)`                         | Scope all methods to one database        |
+
+Call `.in(db)` to get an accessor that doesn't require `db` on every call:
+
+```typescript
+const todos = (yield* SchemaDocument.make(TodoFields)).in("mydb");
+yield* todos.put("todo-1", { title: "Buy milk", done: false });
+```
+
+## SchemaLocalDocument
+
+`SchemaLocalDocument` works the same way for local (non-replicated) documents, resolving `LocalDocument` from the context:
+
+```typescript
+import { SchemaLocalDocument } from "@ceno/core";
+import { Effect, Schema } from "effect";
+
+const ConfigFields = { checkpoint: Schema.String, lastSync: Schema.Number };
+
+const program = Effect.gen(function* () {
+  const configs = (yield* SchemaLocalDocument.make(ConfigFields)).in("mydb");
+  yield* configs.insert("sync-state", { checkpoint: "abc", lastSync: 1719792000 });
+  const state = yield* configs.get("sync-state");
+});
+```
+
+| Method                              | Description                               |
+| ----------------------------------- | ----------------------------------------- |
+| `get(db, docid)`                    | Retrieve and decode a local document      |
+| `insert(db, docid, body, options?)` | Encode and create/update a local document |
+| `in(db)`                            | Scope all methods to one database         |
+
+## Version migrations
+
+When your schema evolves, define a version chain. `SchemaDocument` automatically migrates old documents on read:
+
+```typescript
+import { SchemaDocument, version } from "@ceno/core";
+import { Effect, Schema } from "effect";
+
+const V1 = version({ title: Schema.String });
+
+const V2 = version({
+  from: V1,
+  to: { title: Schema.String, priority: Schema.Number },
+  migrate: (v1) => ({ title: v1.title, priority: 0 }),
+});
+
+const program = Effect.gen(function* () {
+  const docs = yield* SchemaDocument.make(V2);
+  const doc = yield* docs.get("mydb", "old-doc");
+  console.log(doc.priority); // 0 (from V2 migration)
+});
+```
+
+| Export                         | Description                                                               |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| `version(fields \| migration)` | Create a version from plain fields or a migration `{ from, to, migrate }` |
+| `migrate(data, version)`       | Decode data through a version chain, applying migrations as needed        |
+| `toSchema(version)`            | Convert a version to an Effect `Schema`                                   |
+| `isMigrateVersion(v)`          | Type guard for `MigrateVersion`                                           |
+| `MigrateError`                 | Tagged error containing accumulated decode errors from all versions       |
 
 ## Utilities
 

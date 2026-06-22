@@ -2,7 +2,6 @@
   "files": [],
   "references": [
     { "path": "./packages/core" },
-    { "path": "./packages/schema" },
     { "path": "./packages/couchdb" },
     { "path": "./examples" }
   ]

@@ -908,7 +908,7 @@ Define your document shape as Effect Schema fields, then create a typed document
 
 ```typescript
 import { Document } from "@ceno/core";
-import { SchemaDocument } from "@ceno/schema";
+import { SchemaDocument } from "@ceno/core";
 import { Effect, Schema } from "effect";
 
 const TodoFields = {
@@ -1000,7 +1000,7 @@ const program = Effect.gen(function* () {
 `SchemaLocalDocument` works the same way for local (non-replicated) documents:
 
 ```typescript
-import { SchemaLocalDocument } from "@ceno/schema";
+import { SchemaLocalDocument } from "@ceno/core";
 
 const program = Effect.gen(function* () {
   const configs = (yield* SchemaLocalDocument.make({ checkpoint: Schema.String, lastSync: Schema.Number })).in("mydb");

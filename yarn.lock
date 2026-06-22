@@ -157,8 +157,6 @@ __metadata:
 "@ceno/couchdb@workspace:^, @ceno/couchdb@workspace:packages/couchdb":
   version: 0.0.0-use.local
   resolution: "@ceno/couchdb@workspace:packages/couchdb"
-  dependencies:
-    "@ceno/schema": "workspace:^"
   peerDependencies:
     "@ceno/core": "workspace:^"
     effect: ^4.0.0-beta.84
@@ -241,7 +239,6 @@ __metadata:
   dependencies:
     "@ceno/core": "workspace:^"
     "@ceno/couchdb": "workspace:^"
-    "@ceno/schema": "workspace:^"
     effect: "npm:^4.0.0-beta.84"
   languageName: unknown
   linkType: soft
@@ -252,7 +249,6 @@ __metadata:
   dependencies:
     "@ceno/core": "workspace:^"
     "@ceno/couchdb": "workspace:^"
-    "@ceno/schema": "workspace:^"
     effect: "npm:^4.0.0-beta.84"
   languageName: unknown
   linkType: soft
@@ -273,17 +269,47 @@ __metadata:
   dependencies:
     "@ceno/core": "workspace:^"
     "@ceno/couchdb": "workspace:^"
-    "@ceno/schema": "workspace:^"
     effect: "npm:^4.0.0-beta.84"
   languageName: unknown
   linkType: soft
 
-"@ceno/schema@workspace:^, @ceno/schema@workspace:packages/schema":
+"@ceno/example-12-blog-with-attachments@workspace:examples/12-blog-with-attachments":
   version: 0.0.0-use.local
-  resolution: "@ceno/schema@workspace:packages/schema"
-  peerDependencies:
+  resolution: "@ceno/example-12-blog-with-attachments@workspace:examples/12-blog-with-attachments"
+  dependencies:
     "@ceno/core": "workspace:^"
-    effect: ^4.0.0-beta.84
+    "@ceno/couchdb": "workspace:^"
+    effect: "npm:^4.0.0-beta.84"
+  languageName: unknown
+  linkType: soft
+
+"@ceno/example-13-multi-tenant@workspace:examples/13-multi-tenant":
+  version: 0.0.0-use.local
+  resolution: "@ceno/example-13-multi-tenant@workspace:examples/13-multi-tenant"
+  dependencies:
+    "@ceno/core": "workspace:^"
+    "@ceno/couchdb": "workspace:^"
+    effect: "npm:^4.0.0-beta.84"
+  languageName: unknown
+  linkType: soft
+
+"@ceno/example-14-realtime-inventory@workspace:examples/14-realtime-inventory":
+  version: 0.0.0-use.local
+  resolution: "@ceno/example-14-realtime-inventory@workspace:examples/14-realtime-inventory"
+  dependencies:
+    "@ceno/core": "workspace:^"
+    "@ceno/couchdb": "workspace:^"
+    effect: "npm:^4.0.0-beta.84"
+  languageName: unknown
+  linkType: soft
+
+"@ceno/example-15-partitioned-ecommerce@workspace:examples/15-partitioned-ecommerce":
+  version: 0.0.0-use.local
+  resolution: "@ceno/example-15-partitioned-ecommerce@workspace:examples/15-partitioned-ecommerce"
+  dependencies:
+    "@ceno/core": "workspace:^"
+    "@ceno/couchdb": "workspace:^"
+    effect: "npm:^4.0.0-beta.84"
   languageName: unknown
   linkType: soft
 

@@ -7,15 +7,14 @@
  *   yarn start
  */
 
-import { Database } from "@ceno/core";
-import { CouchDbClient, layer } from "@ceno/couchdb";
-import { SchemaDocument, version } from "@ceno/schema";
+import { Database, SchemaDocument, Version } from "@ceno/core";
+import { Client, CouchDB } from "@ceno/couchdb";
 import { Effect, Layer, Redacted, Schema } from "effect";
 import { FetchHttpClient } from "effect/unstable/http";
 
-const CenoLayer = layer.pipe(
+const CenoLayer = CouchDB.layer.pipe(
   Layer.provide(
-    CouchDbClient.layer({
+    Client.layer({
       url: process.env["COUCHDB_URL"] ?? "http://localhost:5984",
       username: process.env["COUCHDB_USER"] ?? "admin",
       password: Redacted.make(process.env["COUCHDB_PASSWORD"] ?? "admin"),
@@ -25,13 +24,13 @@ const CenoLayer = layer.pipe(
 );
 
 // Define a versioned schema for Task documents
-const TaskSchema = version({
+const TaskSchema = Version.version({
   title: Schema.String,
   done: Schema.Boolean,
 });
 
 const program = Effect.gen(function* () {
-  const database = yield* Database;
+  const database = yield* Database.Database;
   yield* database.create("example-typed");
 
   // Create a typed document accessor scoped to a database

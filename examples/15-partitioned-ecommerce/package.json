@@ -1,0 +1,13 @@
+{
+  "name": "@ceno/example-15-partitioned-ecommerce",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "yarn run -T tsx main.ts"
+  },
+  "dependencies": {
+    "@ceno/core": "workspace:^",
+    "@ceno/couchdb": "workspace:^",
+    "effect": "^4.0.0-beta.84"
+  }
+}

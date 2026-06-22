@@ -1,10 +1,13 @@
-import { Document, LocalDocument } from "@ceno/core";
-import { SchemaDocument, SchemaLocalDocument, version } from "@ceno/schema";
+import { Document } from "@ceno/core/Document";
+import { LocalDocument } from "@ceno/core/LocalDocument";
+import * as SchemaDocument from "@ceno/core/SchemaDocument";
+import * as SchemaLocalDocument from "@ceno/core/SchemaLocalDocument";
+import { version } from "@ceno/core/Version";
 import { describe, it } from "@effect/vitest";
 import { strictEqual } from "@effect/vitest/utils";
 import { Effect, Schema } from "effect";
 
-import { TestLayer, withTempDb } from "./helpers";
+import { TestLayer, withTempDb, withTempPartitionedDb } from "./helpers";
 
 const V1 = version({ title: Schema.String });
 
@@ -130,6 +133,42 @@ describe("SchemaDocument", () => {
             { title: "B", priority: 2 },
           ]);
           strictEqual(results.length, 2);
+        }),
+      ).pipe(Effect.provide(TestLayer)),
+    );
+  });
+
+  describe("partition-scoped variant (via .partitioned)", () => {
+    it.effect("partitioned().find binds partition, db still required", () =>
+      withTempPartitionedDb((db) =>
+        Effect.gen(function* () {
+          const doc = yield* Document;
+          yield* doc.put(db, "cat:d1", { title: "Alpha" });
+          yield* doc.put(db, "cat:d2", { title: "Beta", priority: 7 });
+          yield* doc.put(db, "other:d3", { title: "Gamma" });
+
+          const docs = yield* SchemaDocument.make(V2);
+          const part = docs.partitioned("cat");
+          const result = yield* part.find(db, { selector: { title: "Alpha" } });
+          strictEqual(result.docs.length, 1);
+          strictEqual(result.docs[0]!.title, "Alpha");
+          strictEqual(result.docs[0]!.priority, 0);
+        }),
+      ).pipe(Effect.provide(TestLayer)),
+    );
+
+    it.effect("in(db).partitioned().find chains database and partition scoping", () =>
+      withTempPartitionedDb((db) =>
+        Effect.gen(function* () {
+          const doc = yield* Document;
+          yield* doc.put(db, "cat:d1", { title: "Scoped" });
+          yield* doc.put(db, "other:d2", { title: "Outside" });
+
+          const docs = (yield* SchemaDocument.make(V2)).in(db).partitioned("cat");
+          const result = yield* docs.find({ selector: { title: "Scoped" } });
+          strictEqual(result.docs.length, 1);
+          strictEqual(result.docs[0]!.title, "Scoped");
+          strictEqual(result.docs[0]!.priority, 0);
         }),
       ).pipe(Effect.provide(TestLayer)),
     );

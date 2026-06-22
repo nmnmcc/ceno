@@ -1,6 +1,6 @@
 {
   "name": "@ceno/core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "license": "Apache-2.0",
   "description": "Backend-agnostic service contracts, schemas, and errors for ceno — a type-safe CouchDB client built on Effect",
@@ -20,6 +20,17 @@
     "access": "public",
     "exports": {
       ".": "./dist/index.mjs",
+      "./Database": "./dist/Database.mjs",
+      "./DesignDocument": "./dist/DesignDocument.mjs",
+      "./Document": "./dist/Document.mjs",
+      "./Errors": "./dist/Errors.mjs",
+      "./internal": "./dist/internal/index.mjs",
+      "./LocalDocument": "./dist/LocalDocument.mjs",
+      "./SchemaDocument": "./dist/SchemaDocument.mjs",
+      "./SchemaLocalDocument": "./dist/SchemaLocalDocument.mjs",
+      "./Server": "./dist/Server.mjs",
+      "./Stream": "./dist/Stream.mjs",
+      "./Version": "./dist/Version.mjs",
       "./package.json": "./package.json"
     }
   },
@@ -31,6 +42,17 @@
   ],
   "exports": {
     ".": "./src/index.ts",
+    "./Database": "./src/Database.ts",
+    "./DesignDocument": "./src/DesignDocument.ts",
+    "./Document": "./src/Document.ts",
+    "./Errors": "./src/Errors.ts",
+    "./internal": "./src/internal/index.ts",
+    "./LocalDocument": "./src/LocalDocument.ts",
+    "./SchemaDocument": "./src/SchemaDocument.ts",
+    "./SchemaLocalDocument": "./src/SchemaLocalDocument.ts",
+    "./Server": "./src/Server.ts",
+    "./Stream": "./src/Stream.ts",
+    "./Version": "./src/Version.ts",
     "./package.json": "./package.json"
   },
   "scripts": {

@@ -1,4 +1,4 @@
-import { parseNdjsonStream } from "@ceno/core";
+import { parseNdjsonStream } from "@ceno/core/Stream";
 import { describe, it } from "@effect/vitest";
 import { strictEqual } from "@effect/vitest/utils";
 import { Effect, Schema, Stream } from "effect";

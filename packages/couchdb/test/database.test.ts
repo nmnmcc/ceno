@@ -1,4 +1,5 @@
-import { Database, Document } from "@ceno/core";
+import { Database } from "@ceno/core/Database";
+import { Document } from "@ceno/core/Document";
 import { describe, it } from "@effect/vitest";
 import { strictEqual } from "@effect/vitest/utils";
 import { Effect, Stream } from "effect";

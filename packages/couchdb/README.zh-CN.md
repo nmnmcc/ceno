@@ -893,7 +893,7 @@ const result =
 
 ```typescript
 import { Document } from "@ceno/core";
-import { SchemaDocument } from "@ceno/schema";
+import { SchemaDocument } from "@ceno/core";
 import { Effect, Schema } from "effect";
 
 const TodoFields = {
@@ -985,7 +985,7 @@ const program = Effect.gen(function* () {
 `SchemaLocalDocument` 以相同方式用于本地（不复制的）文档：
 
 ```typescript
-import { SchemaLocalDocument } from "@ceno/schema";
+import { SchemaLocalDocument } from "@ceno/core";
 
 const program = Effect.gen(function* () {
   const configs = (yield* SchemaLocalDocument.make({ checkpoint: Schema.String, lastSync: Schema.Number })).in("mydb");

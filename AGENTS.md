@@ -22,13 +22,17 @@
 - **`index.ts` may contain implementation code**, not just re-exports. Files within the same directory must not import from the directory's own `index.ts`.
 - **No `switch/case`** — use Effect `Match` for all value-based branching.
 - **Boolean variables** must use `is`/`has`/`should`/`can` prefixes or adjective/past-participle forms.
-- **Prefer `export * from "..."`** in barrel files over listing individual exports.
+- **Flat PascalCase modules** — each public module is a PascalCase `.ts` file directly under `src/` (e.g. `src/Server.ts`, `src/Database.ts`). No nested `services/` or `libraries/` sub-folders.
+- **`.ts` import extensions** — all relative imports use `.ts` extensions (e.g. `from "./Database.ts"`). The `allowImportingTsExtensions` + `noEmit` tsconfig options enable this.
+- **Namespace barrel re-exports** — the main `index.ts` uses `export * as Xxx from "./Xxx.ts"` to create namespace barrels. Consumers can import the namespace from the package barrel (`import { Server } from "@ceno/core"` → `Server.Server` is the service tag) or import directly from a module (`import { Server } from "@ceno/core/Server"`).
+- **Wildcard package exports** — `package.json` exports use `"./*": "./src/*.ts"` with `"./internal/*": null` to block internal access. Internal code lives in `src/internal/`.
+- **No runtime namespaces** — `erasableSyntaxOnly` is enabled. Do not put runtime values (const, function) inside `namespace` blocks. Type-only namespaces (containing only interfaces/types) are fine and used for service type merging.
 - **No cross-package or cross-folder re-exports** — a barrel file (`index.ts`) only re-exports from its own directory's modules, never from another package or a sibling/parent folder. Consumers import each package directly.
-- **No deep imports across folder boundaries** — when importing from another folder that has an `index.ts`, import from the barrel (e.g. `../libraries`), never from an internal file (e.g. `../libraries/version`). Within the same folder, import directly from siblings (existing rule: never from the directory's own `index.ts`).
+- **No imports from own `index.ts`** — files within the same directory must not import from the directory's own `index.ts`. Import directly from siblings.
 - **No `let`** — all bindings are `const`.
 - **Interface methods use method-signature syntax, not arrow-function properties** — write `name(args): Ret;`, not `readonly name: (args) => Ret;`. This applies to every function member of an `interface` (including nested object-literal members and generic interfaces). Non-function `readonly` properties (values, sub-service objects, data fields) keep `readonly`.
 - **No function overloads — keep the API flat, nano-style** — never give a service method more than one overload signature. Give each variant its own name instead: `list`/`listStream`, `find`/`findStream`, `view`/`viewPost`/`viewStream`, `search`/`searchStream`, `changes`/`changesPost`/`changesStream`, `info`/`dbsInfo`/`dbsInfoPost`. This matches the `nano` CouchDB client. The CouchDB layer then wires each name to one endpoint directly, with no `Match` dispatch and no `as never` bridge.
-- **No grouped sub-objects for operation families — keep methods flat** — do not nest related operations under a sub-object (`bulk.write`, `index.create`, `attachment.insert`, `partition.info`, `security.get`, `revs.limit.get`, `session.login`, `render.show`). Use flat method names: `bulk`/`bulkGet`, `createIndex`/`listIndexes`/`deleteIndex`, `attachmentInsert`/`attachmentGet`/`attachmentExists`/`attachmentDestroy`, `partitionInfo`/`partitionedList`/`partitionedFind`, `getSecurity`/`setSecurity`, `getRevsLimit`/`setRevsLimit`, `auth`/`session`/`logout`, `show`/`updateHandler`/`viewWithList`. The one allowed object-returning method is `in(db)`, which returns a database-scoped view of the same flat methods (the `db` argument dropped).
+- **No grouped sub-objects for operation families — keep methods flat** — do not nest related operations under a sub-object (`bulk.write`, `index.create`, `attachment.insert`, `partition.info`, `security.get`, `revs.limit.get`, `session.login`, `render.show`). Use flat method names: `bulk`/`bulkGet`, `createIndex`/`listIndexes`/`deleteIndex`, `attachmentInsert`/`attachmentGet`/`attachmentExists`/`attachmentDestroy`, `partitionInfo`/`partitionedList`/`partitionedFind`, `getSecurity`/`setSecurity`, `getRevsLimit`/`setRevsLimit`, `auth`/`session`/`logout`, `show`/`updateHandler`/`viewWithList`. The two allowed scope-narrowing methods are `in(db)` (returns a database-scoped view with the `db` argument dropped) and `partitioned(partition)` (returns a partition-scoped view with short names: `info`/`list`/`find`/`view`/`search`; when called at the top level the methods still need a `db` argument, when chained after `.in(db)` the `db` argument is also dropped). Both may chain: `document.in(db).partitioned(partition)`.
 - **TSDoc must tell the reader what feature the code serves** — every export gets a `/** ... */` explaining its product purpose. A reader should never have to reverse-engineer _why_ code exists from the implementation alone. Good: _"Lets users find pages by title within a workspace."_ Bad: _"Implements search CRUD."_ — the second just restates the class name. Interface-layer comments describe what users can do; implementation-layer comments describe non-obvious strategy (e.g. _"on delete, children are re-parented"_). Skip TSDoc on trivial constants and barrel re-exports.
 
 ## ceno
@@ -43,8 +47,7 @@ Yarn workspaces monorepo. Shared tooling (TypeScript, Prettier, effect-tsgo) liv
 
 ```
 packages/
-  core/          — @ceno/core, backend-agnostic service interfaces, schemas, errors, stream helpers
-  schema/        — @ceno/schema, schema-aware version-migrating document operations built on @ceno/core
+  core/          — @ceno/core, backend-agnostic service interfaces, schemas, errors, stream helpers, schema-aware document operations
   couchdb/       — @ceno/couchdb, the CouchDB HTTP implementation (layers) of the @ceno/core services
 ```
 
@@ -54,53 +57,44 @@ packages/
 
 ```
 src/
-  services/
-    errors.ts              — TaggedErrorClass error classes + CenoError/TransportError unions
-    server.ts              — server schemas + Server service contract
-    database.ts            — database schemas + Database service contract
-    document.ts            — document schemas + Document service contract
-    design-document.ts     — design-doc schemas + DesignDocument service contract
-    local-document.ts      — LocalDocument service contract (reuses document schemas)
-    index.ts               — barrel re-exports for services/
-  libraries/
-    stream.ts              — NDJSON stream parsing helper
-    index.ts               — barrel re-exports for libraries/
-  index.ts                 — barrel re-exports (services + libraries)
+  Database.ts            — database schemas + Database service contract
+  DesignDocument.ts      — design-doc schemas + DesignDocument service contract
+  Document.ts            — document schemas + Document service contract
+  Errors.ts              — TaggedErrorClass error classes + CenoError/TransportError unions
+  LocalDocument.ts       — LocalDocument service contract (reuses Document schemas)
+  SchemaDocument.ts      — SchemaDocument: version-migrating typed document operations
+  SchemaLocalDocument.ts — SchemaLocalDocument: version-migrating typed local document operations
+  Server.ts              — server schemas + Server service contract
+  Stream.ts              — NDJSON stream parsing helper
+  Version.ts             — public version chain types & constructors (Version, MigrateVersion, version, MigrateError)
+  index.ts               — namespace barrel: `export * as Xxx from "./Xxx.ts"`
+  internal/
+    version.ts           — migrate, toSchema, isMigrateVersion — version chain implementation details
+    index.ts             — barrel re-exports for internal/
 ```
 
-Each domain file is self-contained: its response/param schemas and its `Context.Service` tag + interface live together (contracts only, no implementation).
+Each domain file is self-contained: its response/param schemas and its `Context.Service` tag + interface live together (contracts only, no implementation). `SchemaDocument` and `SchemaLocalDocument` combine a service with a version chain for typed operations that encode on writes and migrate on reads. The `internal/` folder holds implementation details blocked from external access via `"./internal/*": null` in package exports.
 
-`@ceno/schema` — schema-aware document operations built on top of `@ceno/core`. These are not service contracts and not pure libraries: each is a `make` factory that combines a `@ceno/core` service (`Document` / `LocalDocument`) with the version chain to give typed operations that encode on writes and migrate on reads. It depends on `@ceno/core` (a `peerDependency`, per the contract rule).
-
-```
-src/
-  version.ts             — version chain primitives & schema migration (the version/migrate/toSchema API)
-  document.ts            — SchemaDocument: version-migrating typed document operations
-  local-document.ts      — SchemaLocalDocument: version-migrating typed local document operations
-  index.ts               — barrel re-exports
-```
-
-`@ceno/couchdb` — CouchDB HTTP implementation of the `@ceno/core` services. Mirrors `@ceno/core`'s per-domain file layout; each domain file holds both its standalone `HttpApi` definition and its `@ceno/core` service `Layer`:
+`@ceno/couchdb` — CouchDB HTTP implementation of the `@ceno/core` services:
 
 ```
 src/
-  services/
-    errors.ts          — Wire schemas bridging CouchDB error format to @ceno/core error classes
-    client.ts          — CouchDbClient: factory service deriving an auth-applied client for any HttpApi
-    server.ts          — ServerApi (standalone HttpApi) + CouchDbServer.layer
-    database.ts        — DatabaseApi + CouchDbDatabase.layer
-    document.ts        — DocumentApi + CouchDbDocument.layer
-    design-document.ts — DesignDocumentApi + CouchDbDesignDocument.layer
-    local-document.ts  — LocalDocumentApi + CouchDbLocalDocument.layer
-    index.ts           — barrel re-exports for services/
-  index.ts             — barrel re-exports + the merged `layer`
+  Client.ts          — CouchDbClient service class + layer factory
+  CouchDB.ts — merged layer of all scope layers
+  Database.ts        — Database Api (standalone HttpApi) + layer
+  DesignDocument.ts  — DesignDocument Api + layer
+  Document.ts        — Document Api + layer
+  Errors.ts          — Wire schemas bridging CouchDB error format to @ceno/core error classes
+  LocalDocument.ts   — LocalDocument Api + layer
+  Server.ts          — Server Api + layer
+  index.ts           — namespace barrel: `export * as Xxx from "./Xxx.ts"`
 ```
 
-Each domain file is self-contained: its endpoints, its standalone `HttpApi`, and its `Layer` implementation live together. There is no combined `CouchDbApi` — each scope is an independent `HttpApi`, mutually non-interfering.
+Each domain file is self-contained: its endpoints, its standalone `HttpApi`, and its `Layer` implementation live together as module-level exports (no runtime namespaces). There is no combined `CouchDbApi` — each scope is an independent `HttpApi`, mutually non-interfering.
 
 ### Endpoint conventions
 
-- Each scope is its own standalone `HttpApi`, **not** combined into one: `ServerApi`, `DatabaseApi`, `DocumentApi`, `DesignDocumentApi`, `LocalDocumentApi`, each built as `XxxApi = HttpApi.make("<scope>").add(HttpApiGroup.make("<scope>", { topLevel: true }).add(...endpoints))`
+- Each scope is its own standalone `HttpApi`, **not** combined into one. Each module exports `Api` as a module-level const, built as `Api = HttpApi.make("<scope>").add(HttpApiGroup.make("<scope>", { topLevel: true }).add(...endpoints))`
 - `topLevel: true` flattens the single group so the generated client exposes endpoint methods directly (`client.info()`, not `client.server.info()`)
 - Only include Wire schemas in an endpoint's `error` array for errors that endpoint actually returns
 - Streaming endpoints use `HttpApiSchema.StreamUint8Array()`
@@ -127,17 +121,17 @@ When multiple errors share a status code (e.g. 400 has both `illegal_database_na
 
 ### Client usage
 
-The package-level `layer` provides every `@ceno/core` service backed by CouchDB's HTTP API; it requires a `CouchDbClient`, supplied by `CouchDbClient.layer(config)` (which in turn needs an `HttpClient`, supplied by the caller — ceno is transport-agnostic and bundles no `HttpClient`). Consume the individual service tags (`Server`, `Database`, `Document`, …) from your program. To wire a single scope only, provide its `XxxLayer` (e.g. `ServerLayer`) instead of the merged `layer`.
+`CouchDB.layer` provides every `@ceno/core` service backed by CouchDB's HTTP API; it requires a `CouchDbClient`, supplied by `Client.layer(config)` (which in turn needs an `HttpClient`, supplied by the caller — ceno is transport-agnostic and bundles no `HttpClient`). Consume the individual service tags (`Server.Server`, `Database.Database`, `Document.Document`, …) from your program. To wire a single scope only, provide its scope's `layer` (e.g. `import { Server } from "@ceno/couchdb"` → `Server.layer`) instead of the merged `CouchDB.layer`.
 
 ```typescript
 import { Database, Document, Server } from "@ceno/core";
-import { CouchDbClient, layer } from "@ceno/couchdb";
+import { Client, CouchDB } from "@ceno/couchdb";
 import { Effect, Redacted } from "effect";
 
 const program = Effect.gen(function* () {
-  const server = yield* Server;
-  const database = yield* Database;
-  const document = yield* Document;
+  const server = yield* Server.Server;
+  const database = yield* Database.Database;
+  const document = yield* Document.Document;
 
   const info = yield* server.info;
   yield* database.create("mydb");
@@ -151,9 +145,9 @@ const program = Effect.gen(function* () {
 });
 
 program.pipe(
-  Effect.provide(layer), // all five services; requires CouchDbClient
+  Effect.provide(CouchDB.layer),
   Effect.provide(
-    CouchDbClient.layer({ url: "http://localhost:5984", username: "admin", password: Redacted.make("password") }),
+    Client.layer({ url: "http://localhost:5984", username: "admin", password: Redacted.make("password") }),
   ),
   // ...plus an `HttpClient` layer of your choice — ceno provides none
   Effect.runPromise,
@@ -163,5 +157,5 @@ program.pipe(
 ### Adding an endpoint
 
 1. Check https://docs.couchdb.org/en/stable/api/index.html for the endpoint path, method, params, success response, and all HTTP error status codes
-2. If a new CouchDB error code is needed: add a `CenoXxx` class in `@ceno/core`'s `errors.ts` + a `CenoXxxWire` wire schema in `@ceno/couchdb`'s `errors.ts`
-3. Add the response Schema + service method to the matching `@ceno/core` domain file (`server.ts` / `database.ts` / `document.ts` / `design-document.ts` / `local-document.ts`); then in the matching `@ceno/couchdb` domain file (same name), add the `.add()` endpoint to that scope's `XxxApi` and wire the method through in `XxxLayer`
+2. If a new CouchDB error code is needed: add a `CenoXxx` class in `@ceno/core/Errors.ts` + a `CenoXxxWire` wire schema in `@ceno/couchdb/Errors.ts`
+3. Add the response Schema + service method to the matching `@ceno/core` module (`Server.ts` / `Database.ts` / `Document.ts` / `DesignDocument.ts` / `LocalDocument.ts`); then in the matching `@ceno/couchdb` module (same name), add the `.add()` endpoint to that scope's `Api` and wire the method through in `layer`

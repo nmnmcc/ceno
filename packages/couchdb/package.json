@@ -1,6 +1,6 @@
 {
   "name": "@ceno/couchdb",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "license": "Apache-2.0",
   "description": "CouchDB HTTP implementation of @ceno/core services — a type-safe CouchDB client built on Effect",
@@ -21,6 +21,14 @@
     "access": "public",
     "exports": {
       ".": "./dist/index.mjs",
+      "./Client": "./dist/Client.mjs",
+      "./CouchDB": "./dist/CouchDB.mjs",
+      "./Database": "./dist/Database.mjs",
+      "./DesignDocument": "./dist/DesignDocument.mjs",
+      "./Document": "./dist/Document.mjs",
+      "./Errors": "./dist/Errors.mjs",
+      "./LocalDocument": "./dist/LocalDocument.mjs",
+      "./Server": "./dist/Server.mjs",
       "./package.json": "./package.json"
     }
   },
@@ -32,6 +40,14 @@
   ],
   "exports": {
     ".": "./src/index.ts",
+    "./Client": "./src/Client.ts",
+    "./CouchDB": "./src/CouchDB.ts",
+    "./Database": "./src/Database.ts",
+    "./DesignDocument": "./src/DesignDocument.ts",
+    "./Document": "./src/Document.ts",
+    "./Errors": "./src/Errors.ts",
+    "./LocalDocument": "./src/LocalDocument.ts",
+    "./Server": "./src/Server.ts",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -42,8 +58,5 @@
   "peerDependencies": {
     "@ceno/core": "workspace:^",
     "effect": "^4.0.0-beta.84"
-  },
-  "devDependencies": {
-    "@ceno/schema": "workspace:^"
   }
 }

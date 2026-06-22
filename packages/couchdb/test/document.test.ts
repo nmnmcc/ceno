@@ -1,4 +1,6 @@
-import { Database, DesignDocument, Document } from "@ceno/core";
+import { Database } from "@ceno/core/Database";
+import { DesignDocument } from "@ceno/core/DesignDocument";
+import { Document } from "@ceno/core/Document";
 import { describe, it } from "@effect/vitest";
 import { strictEqual } from "@effect/vitest/utils";
 import { Effect, Stream } from "effect";
@@ -666,6 +668,69 @@ describe("Document", () => {
         const keys = result.rows.map((r) => r.key).sort();
         strictEqual(keys[0], "London");
         strictEqual(keys[1], "Paris");
+      }),
+    ).pipe(Effect.provide(TestLayer)),
+  );
+
+  // ─── .partitioned() scoping ───
+
+  it.effect("partitioned() binds partition, methods still take db", () =>
+    withTempPartitionedDb((name) =>
+      Effect.gen(function* () {
+        const doc = yield* Document;
+        yield* doc.put(name, "alpha:d1", { x: 1 });
+        yield* doc.put(name, "alpha:d2", { x: 2 });
+        yield* doc.put(name, "beta:d3", { x: 3 });
+
+        const alpha = doc.partitioned("alpha");
+        const info = yield* alpha.info(name);
+        strictEqual(info.partition, "alpha");
+        strictEqual(info.doc_count, 2);
+
+        const listed = yield* alpha.list(name);
+        strictEqual(listed.rows.length, 2);
+
+        const found = yield* alpha.find(name, { selector: { x: 1 } });
+        strictEqual(found.docs.length, 1);
+      }),
+    ).pipe(Effect.provide(TestLayer)),
+  );
+
+  it.effect("in(db).partitioned() chains database and partition scoping", () =>
+    withTempPartitionedDb((name) =>
+      Effect.gen(function* () {
+        const doc = yield* Document;
+        yield* doc.put(name, "zone:a1", { city: "Paris" });
+        yield* doc.put(name, "zone:a2", { city: "London" });
+        yield* doc.put(name, "other:b1", { city: "Tokyo" });
+
+        const zone = doc.in(name).partitioned("zone");
+        const info = yield* zone.info();
+        strictEqual(info.partition, "zone");
+        strictEqual(info.doc_count, 2);
+
+        const listed = yield* zone.list();
+        strictEqual(listed.rows.length, 2);
+      }),
+    ).pipe(Effect.provide(TestLayer)),
+  );
+
+  it.effect("ddoc.in(db).partitioned() scopes view to a partition", () =>
+    withTempPartitionedDb((name) =>
+      Effect.gen(function* () {
+        const doc = yield* Document;
+        yield* doc.put(name, "_design/test", {
+          views: { by_city: { map: "function(doc) { if (doc.city) emit(doc.city, 1); }" } },
+          options: { partitioned: true },
+        });
+        yield* doc.put(name, "zone:a1", { city: "Paris" });
+        yield* doc.put(name, "other:b1", { city: "Tokyo" });
+
+        const ddoc = yield* DesignDocument;
+        const zone = ddoc.in(name).partitioned("zone");
+        const result = yield* zone.view("test", "by_city");
+        strictEqual(result.rows.length, 1);
+        strictEqual(result.rows[0]!.key, "Paris");
       }),
     ).pipe(Effect.provide(TestLayer)),
   );

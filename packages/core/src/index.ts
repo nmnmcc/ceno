@@ -1,2 +1,10 @@
-export * from "./services";
-export * from "./libraries";
+export * as Database from "./Database.ts";
+export * as DesignDocument from "./DesignDocument.ts";
+export * as Document from "./Document.ts";
+export * as Errors from "./Errors.ts";
+export * as LocalDocument from "./LocalDocument.ts";
+export * as SchemaDocument from "./SchemaDocument.ts";
+export * as SchemaLocalDocument from "./SchemaLocalDocument.ts";
+export * as Server from "./Server.ts";
+export * as Stream from "./Stream.ts";
+export * as Version from "./Version.ts";
