@@ -300,7 +300,7 @@ export class Document extends Context.Service<Document, Document.Document>()("@c
 export namespace Document {
   /** Document operations narrowed to a single database, created by calling `in` on the {@link Document} service. */
   export type DatabaseDocument = {
-    readonly [K in Exclude<keyof Document, "in">]: Document[K] extends (db: string, ...rest: infer R) => infer Ret
+    readonly [K in Exclude<keyof Document, "in" | "partitioned">]: Document[K] extends (db: string, ...rest: infer R) => infer Ret
       ? (...args: R) => Ret
       : Document[K];
   } & {

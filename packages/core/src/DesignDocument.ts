@@ -129,7 +129,7 @@ export class DesignDocument extends Context.Service<DesignDocument, DesignDocume
 export namespace DesignDocument {
   /** Design document operations narrowed to a single database, created by calling `in` on the {@link DesignDocument} service. */
   export type DatabaseDesignDocument = {
-    readonly [K in Exclude<keyof DesignDocument, "in">]: DesignDocument[K] extends (
+    readonly [K in Exclude<keyof DesignDocument, "in" | "partitioned">]: DesignDocument[K] extends (
       db: string,
       ...rest: infer R
     ) => infer Ret
