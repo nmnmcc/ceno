@@ -46,13 +46,13 @@ const program = Effect.gen(function* () {
   });
 
   yield* database.setSecurity("tenant-globex", {
-    admins: { roles: ["admin"] },
+    admins: { names: [], roles: ["admin"] },
     members: { names: ["hank"], roles: ["globex-member"] },
   });
 
   yield* database.setSecurity("tenant-initech", {
     admins: { names: ["bill"], roles: ["admin"] },
-    members: { roles: ["initech-member"] },
+    members: { names: [], roles: ["initech-member"] },
   });
 
   // Verify a tenant's security settings

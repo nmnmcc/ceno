@@ -1,8 +1,9 @@
-import { isMigrateVersion, migrate, toSchema } from "../src/internal/version.ts";
 import { version } from "@ceno/core/Version";
 import { describe, it } from "@effect/vitest";
 import { strictEqual } from "@effect/vitest/utils";
 import { Effect, Schema } from "effect";
+
+import { isMigrateVersion, migrate, toSchema } from "../src/internal/version.ts";
 
 const V1 = version({ name: Schema.String });
 

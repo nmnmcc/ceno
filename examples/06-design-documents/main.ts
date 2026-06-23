@@ -29,11 +29,22 @@ const program = Effect.gen(function* () {
   const db = "example-views";
   yield* database.create(db);
 
-  // Create a design document with a map view
-  yield* document.put(db, "_design/inventory", {
+  // Write a design document with `ddoc.put`. The map is a real function: `doc` is
+  // typed by the <Product> type argument, and the query-server `emit` is reached
+  // through `this` (typed, no global to declare). put serializes the function —
+  // stripping `this.` and minifying — automatically.
+  interface Product {
+    category: string;
+    name: string;
+    price: number;
+  }
+  yield* ddoc.put<Product>(db, "inventory", {
     views: {
       by_category: {
-        map: "function(doc) { if (doc.category) emit(doc.category, doc.price); }",
+        map: function (doc) {
+          this.emit(doc.category, doc.price);
+        },
+        reduce: DesignDocument.ReduceFunction.sum,
       },
     },
   });
@@ -47,21 +58,18 @@ const program = Effect.gen(function* () {
     { category: "fruit", name: "Cherry", price: 4.0 },
   ]);
 
-  // Query the view — returns rows sorted by key (category)
-  const result = yield* ddoc.view(db, "inventory", "by_category");
-  console.log("All items by category:");
-  for (const row of result.rows) {
-    console.log(`  [${String(row.key)}] $${String(row.value)} (${row.id})`);
+  // Reduce on (group=true): _sum gives the total price per category
+  const totals = yield* ddoc.view(db, "inventory", "by_category", { group: true });
+  console.log("Total price per category:");
+  for (const row of totals.rows) {
+    console.log(`  ${String(row.key)}: $${String(row.value)}`);
   }
-  console.log("Total rows:", result.total_rows);
 
-  // Query with view (POST body) — filter by specific keys
-  const fruits = yield* ddoc.view(db, "inventory", "by_category", {
-    keys: ["fruit"],
-  });
-  console.log("Fruits only:");
-  for (const row of fruits.rows) {
-    console.log(`  $${String(row.value)} (${row.id})`);
+  // Reduce off: the raw emitted rows, sorted by key (category)
+  const items = yield* ddoc.view(db, "inventory", "by_category", { reduce: false });
+  console.log("All items by category:");
+  for (const row of items.rows) {
+    console.log(`  [${String(row.key)}] $${String(row.value)} (${row.id})`);
   }
 
   // Design document info

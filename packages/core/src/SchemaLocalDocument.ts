@@ -1,5 +1,6 @@
 import { Effect, Schema } from "effect";
 
+import type { DocumentInsertResponse } from "./Document.ts";
 import type {
   CenoBadRequest,
   CenoConflict,
@@ -8,10 +9,9 @@ import type {
   CenoUnauthorized,
   TransportError,
 } from "./Errors.ts";
-import type { DocumentInsertResponse } from "./Document.ts";
+import { migrate, toSchema } from "./internal/version.ts";
 import { LocalDocument } from "./LocalDocument.ts";
 import type { MigrateError, Version } from "./Version.ts";
-import { migrate, toSchema } from "./internal/version.ts";
 
 /** Local document operations that auto-migrate reads and encode writes, parameterised by database name. */
 export interface SchemaLocalDocument<F extends Schema.Struct.Fields> {
@@ -21,7 +21,7 @@ export interface SchemaLocalDocument<F extends Schema.Struct.Fields> {
     docid: string,
   ): Effect.Effect<
     Schema.Struct.Type<F> & { readonly _id: string; readonly _rev: string },
-    CenoBadRequest | CenoUnauthorized | CenoNotFound | TransportError | MigrateError,
+    CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError | MigrateError,
     Schema.Struct.DecodingServices<F>
   >;
 
@@ -30,7 +30,7 @@ export interface SchemaLocalDocument<F extends Schema.Struct.Fields> {
     db: string,
     docid: string,
     body: Schema.Struct.Type<F>,
-    options?: { readonly rev?: string },
+    options?: { readonly rev?: string | undefined },
   ): Effect.Effect<
     DocumentInsertResponse,
     | CenoBadRequest
@@ -54,7 +54,7 @@ export interface SchemaDatabaseLocalDocument<F extends Schema.Struct.Fields> {
     docid: string,
   ): Effect.Effect<
     Schema.Struct.Type<F> & { readonly _id: string; readonly _rev: string },
-    CenoBadRequest | CenoUnauthorized | CenoNotFound | TransportError | MigrateError,
+    CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError | MigrateError,
     Schema.Struct.DecodingServices<F>
   >;
 
@@ -62,7 +62,7 @@ export interface SchemaDatabaseLocalDocument<F extends Schema.Struct.Fields> {
   insert(
     docid: string,
     body: Schema.Struct.Type<F>,
-    options?: { readonly rev?: string },
+    options?: { readonly rev?: string | undefined },
   ): Effect.Effect<
     DocumentInsertResponse,
     | CenoBadRequest

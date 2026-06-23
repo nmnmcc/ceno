@@ -149,6 +149,42 @@ View queries, full-text search, show/list/update functions, and partitioned vari
 | `partitionedView(db, partition, ddoc, viewname, options?)` | View within a partition                                |
 | `partitionedSearch(db, partition, ddoc, index, options?)`  | Search within a partition                              |
 
+The methods above query existing design documents. To **define** one, call `put` on the `DesignDocument` service. It is generic over your document type, so the `map`/`reduce`/`filter`/`validation` functions receive a typed `doc`. Query-server globals (`emit`, `sum`, `log`) are reached through `this` — typed, with nothing to declare globally. Function fields accept a real JS function — written inline, with no manual encoding — or a source string; `reduce` also takes a built-in name from `ReduceFunction`. The backend serializes any inline functions for you (the CouchDB backend strips the outermost `this.` and minifies):
+
+```typescript
+import { DesignDocument } from "@ceno/core";
+
+const ddoc = yield * DesignDocument.DesignDocument;
+
+interface Product {
+  category: string;
+  name: string;
+  price: number;
+}
+
+yield *
+  ddoc.put<Product>("mydb", "inventory", {
+    views: {
+      by_category: {
+        // `function`, not arrow, so `this` is the query-server context. doc is typed Product.
+        map: function (doc) {
+          this.emit(doc.category, doc.price);
+        },
+        reduce: DesignDocument.ReduceFunction.sum, // built-in reducer
+      },
+    },
+  });
+```
+
+`ReduceFunction` collects CouchDB's built-in reducers, so you reference them instead of hand-writing (or misspelling) the string:
+
+| Constant                             | CouchDB value            | Result                                  |
+| ------------------------------------ | ------------------------ | --------------------------------------- |
+| `ReduceFunction.count`               | `_count`                 | Rows per key                            |
+| `ReduceFunction.sum`                 | `_sum`                   | Sum of emitted numeric values           |
+| `ReduceFunction.stats`               | `_stats`                 | `{ sum, count, min, max, sumsqr }`      |
+| `ReduceFunction.approxCountDistinct` | `_approx_count_distinct` | Approximate distinct keys (HyperLogLog) |
+
 ### LocalDocument
 
 Local (non-replicated) document CRUD.
@@ -237,8 +273,8 @@ const program = Effect.gen(function* () {
 Call `.in(db)` to get an accessor that doesn't require `db` on every call:
 
 ```typescript
-const todos = (yield* SchemaDocument.make(TodoFields)).in("mydb");
-yield* todos.put("todo-1", { title: "Buy milk", done: false });
+const todos = (yield * SchemaDocument.make(TodoFields)).in("mydb");
+yield * todos.put("todo-1", { title: "Buy milk", done: false });
 ```
 
 ## SchemaLocalDocument

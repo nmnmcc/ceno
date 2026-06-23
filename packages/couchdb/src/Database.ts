@@ -1,14 +1,18 @@
 import {
   Database,
+  DatabaseChangesParams,
   DatabaseChangesResponse,
   DatabaseChangesResultItem,
   DatabaseCreateResponse,
   DatabaseGetResponse,
+  DatabaseListParams,
   DatabaseReplicateResponse,
   DatabaseUpdatesResponse,
   DbsInfoResponse,
   OkResponse,
+  PurgeResponse,
   SecurityObject,
+  UpdatesParams,
 } from "@ceno/core/Database";
 import { parseNdjsonStream } from "@ceno/core/Stream";
 import { Effect, Layer, Schema } from "effect";
@@ -64,12 +68,12 @@ export const Api = HttpApi.make("database").add(
       ],
     }),
     HttpApiEndpoint.get("list", "/_all_dbs", {
-      query: Schema.Unknown,
+      query: DatabaseListParams,
       success: Schema.Array(Schema.String),
       error: [CenoUnauthorizedWire, CenoForbiddenWire],
     }),
     HttpApiEndpoint.get("dbsInfo", "/_dbs_info", {
-      query: Schema.Unknown,
+      query: DatabaseListParams,
       success: DbsInfoResponse,
       error: [CenoUnauthorizedWire, CenoForbiddenWire],
     }),
@@ -118,7 +122,7 @@ export const Api = HttpApi.make("database").add(
     HttpApiEndpoint.post("purge", "/:name/_purge", {
       params: Schema.Struct({ name: Schema.String }),
       payload: Schema.Unknown,
-      success: [Schema.Unknown.pipe(HttpApiSchema.status(201)), Schema.Unknown.pipe(HttpApiSchema.status(202))],
+      success: [PurgeResponse.pipe(HttpApiSchema.status(201)), PurgeResponse.pipe(HttpApiSchema.status(202))],
       error: [
         CenoBadRequestWire,
         CenoUnauthorizedWire,
@@ -163,7 +167,7 @@ export const Api = HttpApi.make("database").add(
     }),
     HttpApiEndpoint.get("changes", "/:name/_changes", {
       params: Schema.Struct({ name: Schema.String }),
-      query: Schema.Unknown,
+      query: DatabaseChangesParams,
       success: DatabaseChangesResponse,
       error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoForbiddenWire],
     }),
@@ -175,11 +179,11 @@ export const Api = HttpApi.make("database").add(
     }),
     HttpApiEndpoint.get("changesStream", "/:name/_changes", {
       params: Schema.Struct({ name: Schema.String }),
-      query: Schema.Unknown,
+      query: DatabaseChangesParams,
       success: HttpApiSchema.StreamUint8Array(),
     }),
     HttpApiEndpoint.get("updates", "/_db_updates", {
-      query: Schema.Unknown,
+      query: UpdatesParams,
       success: DatabaseUpdatesResponse,
       error: [CenoUnauthorizedWire, CenoForbiddenWire],
     }),

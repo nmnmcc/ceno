@@ -7,8 +7,9 @@ import type { CenoBadRequest, CenoForbidden, CenoUnauthorized, TransportError } 
 export const InfoResponse = Schema.Struct({
   couchdb: Schema.String,
   version: Schema.String,
-  git_sha: Schema.String,
-  uuid: Schema.String,
+  // git_sha and uuid are build/config-dependent and omitted by some CouchDB builds; the GET / docs give no field-level guarantee.
+  git_sha: Schema.optional(Schema.String),
+  uuid: Schema.optional(Schema.String),
   features: Schema.Array(Schema.String),
   vendor: Schema.Struct({ name: Schema.String }),
 });

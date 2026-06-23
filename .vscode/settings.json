@@ -1,4 +1,20 @@
 {
-  "cSpell.words": ["ceno", "Ceno", "couchdb", "Ndjson"],
+  "cSpell.words": [
+    "ceno",
+    "Ceno",
+    "couchdb",
+    "ddoc",
+    "ddocs",
+    "docid",
+    "drilldown",
+    "endkey",
+    "httpapi",
+    "Ndjson",
+    "rereduce",
+    "startkey",
+    "sumsqr",
+    "tshirt",
+    "viewname"
+  ],
   "js/ts.tsdk.path": "node_modules/typescript/lib"
 }

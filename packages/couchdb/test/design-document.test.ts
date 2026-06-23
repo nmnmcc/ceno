@@ -151,6 +151,39 @@ describe("DesignDocument", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
+  // ─── Reduce / group wire shapes ───
+  // A reduced or grouped view drops offset/total_rows and emits id-less {key,value}
+  // rows. A schema that requires those fields decodes a normal map view fine but
+  // fails here — so this guards the optionality the happy-path view tests can't.
+
+  it.effect("reduced and grouped views omit offset, total_rows, and row ids", () =>
+    withTempDb((name) =>
+      Effect.gen(function* () {
+        const doc = yield* Document;
+        const ddoc = yield* DesignDocument;
+        yield* doc.put(name, "_design/agg", {
+          views: { count: { map: "function(doc){ emit(doc.tag, 1); }", reduce: "_count" } },
+        });
+        yield* doc.put(name, "a", { tag: "x" });
+        yield* doc.put(name, "b", { tag: "x" });
+        yield* doc.put(name, "c", { tag: "y" });
+
+        // group=false collapses to a single {key:null,value} row with no pagination metadata.
+        const reduced = yield* ddoc.view(name, "agg", "count");
+        strictEqual(reduced.offset, undefined);
+        strictEqual(reduced.total_rows, undefined);
+        strictEqual(reduced.rows[0]!.id, undefined);
+        strictEqual(reduced.rows[0]!.value, 3);
+
+        // group=true returns one id-less row per key.
+        const grouped = yield* ddoc.view(name, "agg", "count", { group: true });
+        strictEqual(grouped.rows.length, 2);
+        strictEqual(grouped.total_rows, undefined);
+        strictEqual(grouped.rows[0]!.id, undefined);
+      }),
+    ).pipe(Effect.provide(TestLayer)),
+  );
+
   // ─── Lifecycle: views update as documents change ───
 
   it.effect("view reflects newly inserted documents", () =>

@@ -78,7 +78,7 @@ npm install @ceno/core @ceno/couchdb effect
   - [localDocument.exists(db, docid)](#localdocumentexistsdb-docid)
   - [localDocument.insert(db, docid, body, [options])](#localdocumentinsertdb-docid-body-options)
   - [localDocument.destroy(db, docid, rev)](#localdocumentdestroydb-docid-rev)
-  - [localDocument.list(db)](#localdocumentlistdb)
+  - [localDocument.list(db, [options])](#localdocumentlistdb-options)
   - [localDocument.fetch(db, body)](#localdocumentfetchdb-body)
 - [TypeScript](#typescript)
   - [Schema 文档](#schema-文档)
@@ -297,7 +297,7 @@ yield * database.compact("alice", "my-ddoc");
 
 ### database.viewCleanup(name)
 
-清理未使用的视图索引文件（`POST /{db}/_view_cleanup`），返回 `void`：
+清理未使用的视图索引文件（`POST /{db}/_view_cleanup`），返回 `{ ok: true }`：
 
 ```typescript
 yield * database.viewCleanup("alice");
@@ -863,9 +863,9 @@ const response =
 yield * localDocument.destroy("alice", "my-local-doc", "0-1");
 ```
 
-### localDocument.list(db)
+### localDocument.list(db, [options])
 
-列出所有本地文档（`GET /{db}/_local_docs`）：
+列出所有本地文档（`GET /{db}/_local_docs`），接受与 `document.list` 相同的列表选项：
 
 ```typescript
 const result = yield * localDocument.list("alice");
@@ -892,8 +892,7 @@ const result =
 以 Effect Schema 字段定义文档结构，然后用 `SchemaDocument.make` 创建类型化的文档访问器：
 
 ```typescript
-import { Document } from "@ceno/core";
-import { SchemaDocument } from "@ceno/core";
+import { Document, SchemaDocument } from "@ceno/core";
 import { Effect, Schema } from "effect";
 
 const TodoFields = {

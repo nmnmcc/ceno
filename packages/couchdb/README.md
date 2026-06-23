@@ -84,7 +84,7 @@ npm install @ceno/core @ceno/couchdb effect
   - [localDocument.exists(db, docid)](#localdocumentexistsdb-docid)
   - [localDocument.insert(db, docid, body, [options])](#localdocumentinsertdb-docid-body-options)
   - [localDocument.destroy(db, docid, rev)](#localdocumentdestroydb-docid-rev)
-  - [localDocument.list(db)](#localdocumentlistdb)
+  - [localDocument.list(db, [options])](#localdocumentlistdb-options)
   - [localDocument.fetch(db, body)](#localdocumentfetchdb-body)
 - [TypeScript](#typescript)
   - [Schema documents](#schema-documents)
@@ -309,7 +309,7 @@ yield * database.compact("alice", "my-ddoc");
 
 ### database.viewCleanup(name)
 
-Removes unused view index files (`POST /{db}/_view_cleanup`). Returns `void`:
+Removes unused view index files (`POST /{db}/_view_cleanup`). Returns `{ ok: true }`:
 
 ```typescript
 yield * database.viewCleanup("alice");
@@ -878,9 +878,9 @@ Deletes a local document (`DELETE /{db}/_local/{docid}`):
 yield * localDocument.destroy("alice", "my-local-doc", "0-1");
 ```
 
-### localDocument.list(db)
+### localDocument.list(db, [options])
 
-Lists all local documents (`GET /{db}/_local_docs`):
+Lists all local documents (`GET /{db}/_local_docs`). Accepts the same listing options as `document.list`:
 
 ```typescript
 const result = yield * localDocument.list("alice");
@@ -907,8 +907,7 @@ The low-level `Document` service accepts and returns `unknown` — you can use i
 Define your document shape as Effect Schema fields, then create a typed document accessor with `SchemaDocument.make`:
 
 ```typescript
-import { Document } from "@ceno/core";
-import { SchemaDocument } from "@ceno/core";
+import { Document, SchemaDocument } from "@ceno/core";
 import { Effect, Schema } from "effect";
 
 const TodoFields = {

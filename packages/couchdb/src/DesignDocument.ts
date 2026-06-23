@@ -1,24 +1,38 @@
 import {
   DesignDocument,
   DesignDocumentInfoResponse,
+  DesignDocumentSearchParams,
   DesignDocumentSearchResponse,
+  DesignDocumentViewParams,
   DesignDocumentViewResponse,
 } from "@ceno/core/DesignDocument";
+import { DocumentInsertResponse } from "@ceno/core/Document";
 import { Effect, Layer, Schema, Stream } from "effect";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi";
 
 import { CouchDbClient } from "./Client.ts";
 import {
   CenoBadRequestWire,
+  CenoConflictWire,
   CenoForbiddenWire,
   CenoInternalServerErrorWire,
   CenoNotFoundWire,
   CenoUnauthorizedWire,
 } from "./Errors.ts";
+import { encodeDesignBody } from "./internal/designBody.ts";
 
 /** Self-contained HttpApi for CouchDB design-document endpoints, independent of the other scopes. */
 export const Api = HttpApi.make("designDocument").add(
   HttpApiGroup.make("designDocument", { topLevel: true }).add(
+    HttpApiEndpoint.put("put", "/:db/_design/:ddoc", {
+      params: Schema.Struct({ db: Schema.String, ddoc: Schema.String }),
+      payload: Schema.Unknown,
+      success: [
+        DocumentInsertResponse.pipe(HttpApiSchema.status(201)),
+        DocumentInsertResponse.pipe(HttpApiSchema.status(202)),
+      ],
+      error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire, CenoConflictWire],
+    }),
     HttpApiEndpoint.get("info", "/:db/_design/:ddoc/_info", {
       params: Schema.Struct({ db: Schema.String, ddoc: Schema.String }),
       success: DesignDocumentInfoResponse,
@@ -30,7 +44,7 @@ export const Api = HttpApi.make("designDocument").add(
         ddoc: Schema.String,
         viewname: Schema.String,
       }),
-      query: Schema.Unknown,
+      query: DesignDocumentViewParams,
       success: DesignDocumentViewResponse,
       error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire],
     }),
@@ -50,7 +64,7 @@ export const Api = HttpApi.make("designDocument").add(
         ddoc: Schema.String,
         viewname: Schema.String,
       }),
-      query: Schema.Unknown,
+      query: DesignDocumentViewParams,
       success: HttpApiSchema.StreamUint8Array(),
     }),
     HttpApiEndpoint.get("search", "/:db/_design/:ddoc/_search/:index", {
@@ -59,7 +73,7 @@ export const Api = HttpApi.make("designDocument").add(
         ddoc: Schema.String,
         index: Schema.String,
       }),
-      query: Schema.Unknown,
+      query: DesignDocumentSearchParams,
       success: DesignDocumentSearchResponse,
       error: [
         CenoBadRequestWire,
@@ -75,7 +89,7 @@ export const Api = HttpApi.make("designDocument").add(
         ddoc: Schema.String,
         index: Schema.String,
       }),
-      query: Schema.Unknown,
+      query: DesignDocumentSearchParams,
       success: HttpApiSchema.StreamUint8Array(),
     }),
     HttpApiEndpoint.get("show", "/:db/_design/:ddoc/_show/:func/:docid", {
@@ -113,7 +127,7 @@ export const Api = HttpApi.make("designDocument").add(
         list: Schema.String,
         viewname: Schema.String,
       }),
-      query: Schema.Unknown,
+      query: DesignDocumentViewParams,
       success: Schema.Unknown,
       error: [CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire, CenoInternalServerErrorWire],
     }),
@@ -124,7 +138,7 @@ export const Api = HttpApi.make("designDocument").add(
         ddoc: Schema.String,
         viewname: Schema.String,
       }),
-      query: Schema.Unknown,
+      query: DesignDocumentViewParams,
       success: DesignDocumentViewResponse,
       error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire],
     }),
@@ -135,7 +149,7 @@ export const Api = HttpApi.make("designDocument").add(
         ddoc: Schema.String,
         index: Schema.String,
       }),
-      query: Schema.Unknown,
+      query: DesignDocumentSearchParams,
       success: DesignDocumentSearchResponse,
       error: [
         CenoBadRequestWire,
@@ -166,6 +180,7 @@ export const layer = Layer.effect(
     });
 
     const makeScoped = (db: string): DesignDocument.DatabaseDesignDocument => ({
+      put: (ddoc, body) => designDocument.put(db, ddoc, body),
       info: (ddoc) => designDocument.info(db, ddoc),
       view: (ddoc, viewname, opts) => designDocument.view(db, ddoc, viewname, opts),
       viewPost: (ddoc, viewname, body) => designDocument.viewPost(db, ddoc, viewname, body),
@@ -183,6 +198,8 @@ export const layer = Layer.effect(
     });
 
     const designDocument: DesignDocument.DesignDocument = {
+      put: (db, ddoc, body) =>
+        Effect.flatMap(encodeDesignBody(body), (payload) => client.put({ params: { db, ddoc }, payload })),
       info: (db, ddoc) => client.info({ params: { db, ddoc } }),
       view: (db, ddoc, viewname, opts) => client.view({ params: { db, ddoc, viewname }, query: opts ?? {} }),
       viewPost: (db, ddoc, viewname, body) => client.viewPost({ params: { db, ddoc, viewname }, payload: body }),

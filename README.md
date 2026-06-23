@@ -56,32 +56,32 @@ program.pipe(
 
 ## Packages
 
-| Package                               | Description                                                                              |
-| ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Package                               | Description                                                                               |
+| ------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [`@ceno/core`](./packages/core)       | Backend-agnostic service contracts, schemas, errors, and schema-aware document operations |
-| [`@ceno/couchdb`](./packages/couchdb) | CouchDB HTTP implementation — **[full API documentation](./packages/couchdb/README.md)** |
+| [`@ceno/couchdb`](./packages/couchdb) | CouchDB HTTP implementation — **[full API documentation](./packages/couchdb/README.md)**  |
 
 ## Examples
 
 The [`examples/`](./examples) directory contains runnable examples that progressively demonstrate ceno's features:
 
-| Example                                                 | What it covers                                 |
-| ------------------------------------------------------- | ---------------------------------------------- |
-| [`01-server-info`](./examples/01-server-info)           | Connect and query server metadata              |
-| [`02-database-basics`](./examples/02-database-basics)   | Database lifecycle: create, exists, info, list |
-| [`03-document-crud`](./examples/03-document-crud)       | Document CRUD and `.in(db)` scoping            |
-| [`04-bulk-operations`](./examples/04-bulk-operations)   | Bulk write and get                             |
-| [`05-mango-queries`](./examples/05-mango-queries)       | Mango queries and indexes                      |
-| [`06-design-documents`](./examples/06-design-documents) | MapReduce views and design document info       |
-| [`07-changes-feed`](./examples/07-changes-feed)         | Normal and continuous streaming changes feed   |
-| [`08-typed-documents`](./examples/08-typed-documents)   | Type-safe operations with `SchemaDocument`     |
-| [`09-schema-migration`](./examples/09-schema-migration) | Multi-version migration chains                 |
-| [`10-error-handling`](./examples/10-error-handling)     | `catchTag` and `match` error handling patterns |
-| [`11-local-documents`](./examples/11-local-documents)   | Local documents and `SchemaLocalDocument`      |
-| [`12-blog-with-attachments`](./examples/12-blog-with-attachments) | Blog CMS: attachments, views, schema evolution |
-| [`13-multi-tenant`](./examples/13-multi-tenant)         | Multi-tenant: security, replication, maintenance |
-| [`14-realtime-inventory`](./examples/14-realtime-inventory) | Real-time inventory: changes stream, conflict retry |
-| [`15-partitioned-ecommerce`](./examples/15-partitioned-ecommerce) | Partitioned e-commerce: partition queries, views |
+| Example                                                           | What it covers                                      |
+| ----------------------------------------------------------------- | --------------------------------------------------- |
+| [`01-server-info`](./examples/01-server-info)                     | Connect and query server metadata                   |
+| [`02-database-basics`](./examples/02-database-basics)             | Database lifecycle: create, exists, info, list      |
+| [`03-document-crud`](./examples/03-document-crud)                 | Document CRUD and `.in(db)` scoping                 |
+| [`04-bulk-operations`](./examples/04-bulk-operations)             | Bulk write and get                                  |
+| [`05-mango-queries`](./examples/05-mango-queries)                 | Mango queries and indexes                           |
+| [`06-design-documents`](./examples/06-design-documents)           | MapReduce views and design document info            |
+| [`07-changes-feed`](./examples/07-changes-feed)                   | Normal and continuous streaming changes feed        |
+| [`08-typed-documents`](./examples/08-typed-documents)             | Type-safe operations with `SchemaDocument`          |
+| [`09-schema-migration`](./examples/09-schema-migration)           | Multi-version migration chains                      |
+| [`10-error-handling`](./examples/10-error-handling)               | `catchTag` and `match` error handling patterns      |
+| [`11-local-documents`](./examples/11-local-documents)             | Local documents and `SchemaLocalDocument`           |
+| [`12-blog-with-attachments`](./examples/12-blog-with-attachments) | Blog CMS: attachments, views, schema evolution      |
+| [`13-multi-tenant`](./examples/13-multi-tenant)                   | Multi-tenant: security, replication, maintenance    |
+| [`14-realtime-inventory`](./examples/14-realtime-inventory)       | Real-time inventory: changes stream, conflict retry |
+| [`15-partitioned-ecommerce`](./examples/15-partitioned-ecommerce) | Partitioned e-commerce: partition queries, views    |
 
 Each example is a standalone workspace. To run one (requires a running CouchDB instance):
 

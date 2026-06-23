@@ -1,6 +1,6 @@
 {
   "name": "@ceno/core",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "license": "Apache-2.0",
   "description": "Backend-agnostic service contracts, schemas, and errors for ceno — a type-safe CouchDB client built on Effect",
@@ -60,6 +60,6 @@
     "build": "yarn run -T tsdown"
   },
   "peerDependencies": {
-    "effect": "^4.0.0-beta.84"
+    "effect": "^4.0.0-beta.86"
   }
 }

@@ -2,6 +2,7 @@ import {
   DocumentDestroyResponse,
   DocumentFetchResponse,
   DocumentInsertResponse,
+  DocumentListParams,
   DocumentListResponse,
 } from "@ceno/core/Document";
 import { LocalDocument } from "@ceno/core/LocalDocument";
@@ -24,7 +25,7 @@ export const Api = HttpApi.make("localDocument").add(
       params: Schema.Struct({ db: Schema.String, docid: Schema.String }),
       query: Schema.Unknown,
       success: Schema.Unknown,
-      error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoNotFoundWire],
+      error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire],
     }),
     HttpApiEndpoint.head("exists", "/:db/_local/:docid", {
       params: Schema.Struct({ db: Schema.String, docid: Schema.String }),
@@ -40,13 +41,13 @@ export const Api = HttpApi.make("localDocument").add(
     }),
     HttpApiEndpoint["delete"]("destroy", "/:db/_local/:docid", {
       params: Schema.Struct({ db: Schema.String, docid: Schema.String }),
-      query: Schema.Struct({ rev: Schema.String }),
+      query: Schema.Struct({ rev: Schema.optional(Schema.String) }),
       success: DocumentDestroyResponse,
-      error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoNotFoundWire, CenoConflictWire],
+      error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire, CenoConflictWire],
     }),
     HttpApiEndpoint.get("list", "/:db/_local_docs", {
       params: Schema.Struct({ db: Schema.String }),
-      query: Schema.Unknown,
+      query: DocumentListParams,
       success: DocumentListResponse,
       error: [CenoUnauthorizedWire, CenoForbiddenWire],
     }),
@@ -87,7 +88,7 @@ export const layer = Layer.effect(
           query: { rev: opts?.rev },
         }),
       destroy: (db, docid, rev) => client.destroy({ params: { db, docid }, query: { rev } }),
-      list: (db) => client.list({ params: { db }, query: {} }),
+      list: (db, opts) => client.list({ params: { db }, query: opts ?? {} }),
       fetch: (db, body) => client.fetch({ params: { db }, payload: body, query: {} }),
     });
   }),

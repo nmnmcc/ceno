@@ -4,6 +4,7 @@ import type {
   DocumentDestroyResponse,
   DocumentFetchResponse,
   DocumentInsertResponse,
+  DocumentListParams,
   DocumentListResponse,
 } from "./Document.ts";
 import type {
@@ -27,7 +28,7 @@ export namespace LocalDocument {
     get(
       db: string,
       docid: string,
-    ): Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoNotFound | TransportError>;
+    ): Effect.Effect<unknown, CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | TransportError>;
     /** Checks whether a local document exists. */
     exists(db: string, docid: string): Effect.Effect<boolean, CenoUnauthorized | CenoForbidden | TransportError>;
     /** Creates or updates a local document. */
@@ -35,7 +36,7 @@ export namespace LocalDocument {
       db: string,
       docid: string,
       body: unknown,
-      options?: { readonly rev?: string },
+      options?: { readonly rev?: string | undefined },
     ): Effect.Effect<
       DocumentInsertResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
@@ -44,13 +45,16 @@ export namespace LocalDocument {
     destroy(
       db: string,
       docid: string,
-      rev: string,
+      rev: string | undefined,
     ): Effect.Effect<
       DocumentDestroyResponse,
-      CenoBadRequest | CenoUnauthorized | CenoNotFound | CenoConflict | TransportError
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
     >;
-    /** Lists all local documents. */
-    list(db: string): Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | TransportError>;
+    /** Lists all local documents. Accepts the same listing options as `_all_docs`. */
+    list(
+      db: string,
+      options?: DocumentListParams,
+    ): Effect.Effect<DocumentListResponse, CenoUnauthorized | CenoForbidden | TransportError>;
     /** Fetches specific local documents by keys. */
     fetch(
       db: string,

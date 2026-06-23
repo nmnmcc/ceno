@@ -1,4 +1,4 @@
-import { Context, Schema, type Effect, type Stream } from "effect";
+import { Context, Effect, Schema, type Stream } from "effect";
 import type { HttpClientError } from "effect/unstable/http";
 
 import type {
@@ -38,13 +38,13 @@ export const DatabaseGetResponse = Schema.Struct({
   doc_del_count: Schema.Number,
   instance_start_time: Schema.String,
   props: Schema.optional(Schema.Struct({ partitioned: Schema.optional(Schema.Boolean) })),
-  purge_seq: Schema.Union([Schema.Number, Schema.String]),
+  purge_seq: Schema.String,
   sizes: Schema.Struct({
     active: Schema.Number,
     external: Schema.Number,
     file: Schema.Number,
   }),
-  update_seq: Schema.Union([Schema.Number, Schema.String]),
+  update_seq: Schema.String,
 });
 export type DatabaseGetResponse = typeof DatabaseGetResponse.Type;
 
@@ -54,6 +54,8 @@ export const DatabaseChangesResultItem = Schema.Struct({
   id: Schema.String,
   seq: Schema.Unknown,
   deleted: Schema.optional(Schema.Boolean),
+  // Present only when the feed is requested with include_docs=true.
+  doc: Schema.optional(Schema.Unknown),
 });
 export type DatabaseChangesResultItem = typeof DatabaseChangesResultItem.Type;
 
@@ -86,6 +88,9 @@ const DatabaseReplicationHistoryItem = Schema.Struct({
   doc_write_failures: Schema.Number,
   docs_read: Schema.Number,
   docs_written: Schema.Number,
+  // CouchDB returns 0 (number) for initial sequences, opaque strings for actual
+  // sequences. The _replicate docs say number; GET /{db} docs say string for the
+  // same kind of value. Union covers both forms CouchDB actually produces.
   end_last_seq: Schema.Union([Schema.Number, Schema.String]),
   end_time: Schema.String,
   missing_checked: Schema.Number,
@@ -106,6 +111,13 @@ export const DatabaseReplicateResponse = Schema.Struct({
 });
 export type DatabaseReplicateResponse = typeof DatabaseReplicateResponse.Type;
 
+/** Result of purging document revisions. */
+export const PurgeResponse = Schema.Struct({
+  purge_seq: Schema.NullOr(Schema.String),
+  purged: Schema.Record(Schema.String, Schema.Array(Schema.String)),
+});
+export type PurgeResponse = typeof PurgeResponse.Type;
+
 /** Options for creating a database. */
 export interface DatabaseCreateParams {
   readonly n?: number;
@@ -113,24 +125,30 @@ export interface DatabaseCreateParams {
   readonly q?: number;
 }
 
-/** Options for reading a database changes feed. */
-export interface DatabaseChangesParams {
-  readonly doc_ids?: readonly string[];
-  readonly conflicts?: boolean;
-  readonly descending?: boolean;
-  readonly feed?: "normal" | "longpoll" | "continuous" | "eventsource";
-  readonly filter?: string;
-  readonly heartbeat?: number;
-  readonly include_docs?: boolean;
-  readonly attachments?: boolean;
-  readonly att_encoding_info?: boolean;
-  readonly limit?: number;
-  readonly since?: string | number;
-  readonly style?: string;
-  readonly timeout?: number;
-  readonly view?: string;
-  readonly seq_interval?: number;
-}
+/**
+ * Options for reading a database changes feed, as a Schema so the HttpApi query
+ * encoder coerces each value: booleans → "true"/"false", numbers → decimal,
+ * `since` (string or seq number) and `feed` pass through as strings.
+ * See https://docs.couchdb.org/en/stable/api/database/changes.html
+ */
+export const DatabaseChangesParams = Schema.Struct({
+  doc_ids: Schema.optional(Schema.UnknownFromJsonString),
+  conflicts: Schema.optional(Schema.Boolean),
+  descending: Schema.optional(Schema.Boolean),
+  feed: Schema.optional(Schema.Literals(["normal", "longpoll", "continuous", "eventsource"])),
+  filter: Schema.optional(Schema.String),
+  heartbeat: Schema.optional(Schema.Number),
+  include_docs: Schema.optional(Schema.Boolean),
+  attachments: Schema.optional(Schema.Boolean),
+  att_encoding_info: Schema.optional(Schema.Boolean),
+  limit: Schema.optional(Schema.Number),
+  since: Schema.optional(Schema.Union([Schema.String, Schema.Number])),
+  style: Schema.optional(Schema.String),
+  timeout: Schema.optional(Schema.Number),
+  view: Schema.optional(Schema.String),
+  seq_interval: Schema.optional(Schema.Number),
+});
+export type DatabaseChangesParams = typeof DatabaseChangesParams.Type;
 
 /** Options for starting a replication between two databases. */
 export interface DatabaseReplicateOptions {
@@ -148,30 +166,39 @@ export interface DatabaseReplicateOptions {
   readonly winning_revs_only?: boolean;
 }
 
-/** Options for subscribing to global database update events. */
-export interface UpdatesParams {
-  readonly feed?: "normal" | "longpoll" | "continuous" | "eventsource";
-  readonly timeout?: number;
-  readonly heartbeat?: number;
-  readonly since?: string;
-}
+/** Options for subscribing to global database update events; a Schema so numeric/string params coerce on the wire. */
+export const UpdatesParams = Schema.Struct({
+  feed: Schema.optional(Schema.Literals(["normal", "longpoll", "continuous", "eventsource"])),
+  timeout: Schema.optional(Schema.Number),
+  heartbeat: Schema.optional(Schema.Number),
+  since: Schema.optional(Schema.String),
+});
+export type UpdatesParams = typeof UpdatesParams.Type;
 
-/** Options for listing or looking up databases. */
-export interface DatabaseListParams {
-  readonly descending?: boolean;
-  readonly endkey?: string;
-  readonly end_key?: string;
-  readonly inclusive_end?: boolean;
-  readonly limit?: number;
-  readonly skip?: number;
-  readonly startkey?: string;
-  readonly start_key?: string;
-}
+/**
+ * Options for listing or looking up databases, as a Schema for wire coercion:
+ * `descending`/`inclusive_end` → "true"/"false", `limit`/`skip` → decimal, and
+ * the JSON key bounds (`startkey`/`endkey`) → JSON via `UnknownFromJsonString`.
+ */
+export const DatabaseListParams = Schema.Struct({
+  descending: Schema.optional(Schema.Boolean),
+  endkey: Schema.optional(Schema.UnknownFromJsonString),
+  end_key: Schema.optional(Schema.UnknownFromJsonString),
+  inclusive_end: Schema.optional(Schema.Boolean),
+  limit: Schema.optional(Schema.Number),
+  skip: Schema.optional(Schema.Number),
+  startkey: Schema.optional(Schema.UnknownFromJsonString),
+  start_key: Schema.optional(Schema.UnknownFromJsonString),
+});
+export type DatabaseListParams = typeof DatabaseListParams.Type;
 
 /** Access control list used in `_security`. */
+// CouchDB docs show names/roles as required arrays. CouchDB 3.x omits them on
+// databases with no explicit security (`admins: {}`). withDecodingDefaultKey
+// keeps the Type required (matching docs) and defaults to [] when absent.
 const SecurityAcl = Schema.Struct({
-  names: Schema.optional(Schema.Array(Schema.String)),
-  roles: Schema.optional(Schema.Array(Schema.String)),
+  names: Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
+  roles: Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
 });
 
 /** A database's admins and members access lists. */
@@ -250,7 +277,10 @@ export namespace Database {
     /** Removes unused view index files. */
     viewCleanup(
       name: string,
-    ): Effect.Effect<void, CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | TransportError>;
+    ): Effect.Effect<
+      OkResponse,
+      CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | TransportError
+    >;
 
     /** Retrieves the database security object. */
     getSecurity(name: string): Effect.Effect<SecurityObject, CenoUnauthorized | CenoForbidden | TransportError>;
@@ -287,7 +317,7 @@ export namespace Database {
       name: string,
       body: unknown,
     ): Effect.Effect<
-      unknown,
+      PurgeResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoBadContentType | CenoInternalServerError | TransportError
     >;
 

@@ -1,11 +1,5 @@
 import { OkResponse } from "@ceno/core/Database";
-import {
-  DatabaseAuthResponse,
-  DatabaseSessionResponse,
-  InfoResponse,
-  Server,
-  UUIDObject,
-} from "@ceno/core/Server";
+import { DatabaseAuthResponse, DatabaseSessionResponse, InfoResponse, Server, UUIDObject } from "@ceno/core/Server";
 import { Effect, Layer, Schema } from "effect";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 

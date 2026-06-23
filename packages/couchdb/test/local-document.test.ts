@@ -184,7 +184,7 @@ describe("LocalDocument", () => {
         yield* local.insert(name, "invisible", { x: 1 });
         const doc = yield* Document;
         const result = yield* doc.list(name);
-        const found = result.rows.find((r) => r.id.includes("invisible"));
+        const found = result.rows.find((r) => r.id?.includes("invisible"));
         strictEqual(found, undefined);
       }),
     ).pipe(Effect.provide(TestLayer)),

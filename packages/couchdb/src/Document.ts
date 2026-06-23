@@ -5,8 +5,11 @@ import {
   Document,
   DocumentBulkResponse,
   DocumentDestroyResponse,
+  DocumentFetchParams,
   DocumentFetchResponse,
+  DocumentGetParams,
   DocumentInsertResponse,
+  DocumentListParams,
   DocumentListResponse,
   IndexListResponse,
   MangoResponse,
@@ -55,7 +58,7 @@ export const Api = HttpApi.make("document").add(
     }),
     HttpApiEndpoint.get("get", "/:db/:docid", {
       params: Schema.Struct({ db: Schema.String, docid: Schema.String }),
-      query: Schema.Unknown,
+      query: DocumentGetParams,
       success: Schema.Unknown,
       error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire],
     }),
@@ -66,7 +69,7 @@ export const Api = HttpApi.make("document").add(
     }),
     HttpApiEndpoint["delete"]("destroy", "/:db/:docid", {
       params: Schema.Struct({ db: Schema.String, docid: Schema.String }),
-      query: Schema.Struct({ rev: Schema.String, batch: Schema.optional(Schema.String) }),
+      query: Schema.Struct({ rev: Schema.optional(Schema.String), batch: Schema.optional(Schema.String) }),
       success: [DocumentDestroyResponse, DocumentDestroyResponse.pipe(HttpApiSchema.status(202))],
       error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire, CenoConflictWire],
     }),
@@ -84,14 +87,14 @@ export const Api = HttpApi.make("document").add(
     }),
     HttpApiEndpoint.get("list", "/:db/_all_docs", {
       params: Schema.Struct({ db: Schema.String }),
-      query: Schema.Unknown,
+      query: DocumentListParams,
       success: DocumentListResponse,
       error: [CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire],
     }),
     HttpApiEndpoint.post("fetch", "/:db/_all_docs", {
       params: Schema.Struct({ db: Schema.String }),
       payload: Schema.Unknown,
-      query: Schema.Unknown,
+      query: DocumentFetchParams,
       success: DocumentFetchResponse,
       error: [CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire],
     }),
@@ -180,13 +183,13 @@ export const Api = HttpApi.make("document").add(
         docid: Schema.String,
         attname: Schema.String,
       }),
-      query: Schema.Struct({ rev: Schema.String, batch: Schema.optional(Schema.String) }),
+      query: Schema.Struct({ rev: Schema.optional(Schema.String), batch: Schema.optional(Schema.String) }),
       success: [DocumentDestroyResponse, DocumentDestroyResponse.pipe(HttpApiSchema.status(202))],
       error: [CenoBadRequestWire, CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire, CenoConflictWire],
     }),
     HttpApiEndpoint.get("listStream", "/:db/_all_docs", {
       params: Schema.Struct({ db: Schema.String }),
-      query: Schema.Unknown,
+      query: DocumentListParams,
       success: HttpApiSchema.StreamUint8Array(),
     }),
     HttpApiEndpoint.post("findStream", "/:db/_find", {
@@ -201,7 +204,7 @@ export const Api = HttpApi.make("document").add(
     }),
     HttpApiEndpoint.get("partitionedList", "/:db/_partition/:partition/_all_docs", {
       params: Schema.Struct({ db: Schema.String, partition: Schema.String }),
-      query: Schema.Unknown,
+      query: DocumentListParams,
       success: DocumentListResponse,
       error: [CenoUnauthorizedWire, CenoForbiddenWire, CenoNotFoundWire],
     }),
@@ -294,8 +297,7 @@ export const layer = Layer.effect(
         }),
       get: (db, docid, opts) => client.get({ params: { db, docid }, query: opts ?? {} }),
       exists: (db, docid) => foldExists(client.head({ params: { db, docid } })),
-      destroy: (db, docid, rev, opts) =>
-        client.destroy({ params: { db, docid }, query: { rev, batch: opts?.batch } }),
+      destroy: (db, docid, rev, opts) => client.destroy({ params: { db, docid }, query: { rev, batch: opts?.batch } }),
       bulk: (db, docs) => client.bulk({ params: { db }, payload: { docs } }),
       bulkGet: (db, docs) => client.bulkGet({ params: { db }, payload: { docs } }),
       list: (db, opts) => client.list({ params: { db }, query: opts ?? {} }),
@@ -306,8 +308,7 @@ export const layer = Layer.effect(
       createIndex: (db, index) => client.createIndex({ params: { db }, payload: index }),
       deleteIndex: (db, ddoc, name) => client.deleteIndex({ params: { db, ddoc, name } }),
       find: (db, query) => client.find({ params: { db }, payload: query }),
-      findStream: (db, query) =>
-        Effect.map(client.findStream({ params: { db }, payload: query }), Stream.decodeText()),
+      findStream: (db, query) => Effect.map(client.findStream({ params: { db }, payload: query }), Stream.decodeText()),
       explain: (db, query) => client.explain({ params: { db }, payload: query }),
       attachmentInsert: (db, docid, attname, data, opts) =>
         client.attachmentInsert({ params: { db, docid, attname }, payload: data, query: { rev: opts?.rev } }),
@@ -319,8 +320,7 @@ export const layer = Layer.effect(
       partitionInfo: (db, partition) => client.partitionInfo({ params: { db, partition } }),
       partitionedList: (db, partition, opts) =>
         client.partitionedList({ params: { db, partition }, query: opts ?? {} }),
-      partitionedFind: (db, partition, query) =>
-        client.partitionedFind({ params: { db, partition }, payload: query }),
+      partitionedFind: (db, partition, query) => client.partitionedFind({ params: { db, partition }, payload: query }),
       partitioned: (partition) => ({
         info: (db) => document.partitionInfo(db, partition),
         list: (db, opts) => document.partitionedList(db, partition, opts),

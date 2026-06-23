@@ -290,7 +290,7 @@ describe("Document", () => {
         strictEqual(result.rows.length, 1);
         strictEqual(result.rows[0]!.id, "d1");
         strictEqual(result.rows[0]!.key, "d1");
-        strictEqual(typeof result.rows[0]!.value.rev, "string");
+        strictEqual(typeof result.rows[0]!.value!.rev, "string");
       }),
     ).pipe(Effect.provide(TestLayer)),
   );
@@ -302,6 +302,63 @@ describe("Document", () => {
         const result = yield* doc.list(name);
         strictEqual(result.total_rows, 0);
         strictEqual(result.rows.length, 0);
+      }),
+    ).pipe(Effect.provide(TestLayer)),
+  );
+
+  // ─── Wire-shape regressions (CouchDB-spec edge cases the happy path never hits) ───
+  // These pin schema fields that are *absent* in specific responses. A stricter
+  // schema (rev/id/value required) decodes the happy path fine but fails here, so
+  // without them an over-strict schema passes the whole suite unnoticed.
+
+  it.effect("insert in batch mode returns 202 Accepted with no rev", () =>
+    withTempDb((name) =>
+      Effect.gen(function* () {
+        const doc = yield* Document;
+        // ?batch=ok queues the write; CouchDB answers 202 with {ok,id} and no rev yet.
+        // This is the falsifying case for DocumentInsertResponse.rev being optional.
+        const result = yield* doc.insert(name, { title: "queued" }, { batch: "ok" });
+        strictEqual(result.ok, true);
+        strictEqual(typeof result.id, "string");
+        strictEqual(result.rev, undefined);
+      }),
+    ).pipe(Effect.provide(TestLayer)),
+  );
+
+  // DocumentDestroyResponse.rev is likewise optional per the CouchDB spec (DELETE
+  // accepts ?batch=ok → 202 without a rev), but a stock single-node server processes
+  // batch deletes synchronously (200 + rev), so that shape can't be reproduced here.
+
+  it.effect("list with keys decodes error rows and deleted-revision rows", () =>
+    withTempDb((name) =>
+      Effect.gen(function* () {
+        const doc = yield* Document;
+        const created = yield* doc.put(name, "gone", { x: 1 });
+        yield* doc.destroy(name, "gone", created.rev);
+        // GET _all_docs?keys=["gone","fake"]: a deleted-tombstone row + a not_found error row.
+        // keys is a native array — the query Schema JSON-encodes it for the wire.
+        const result = yield* doc.list(name, { keys: ["gone", "fake"] });
+
+        const errorRow = result.rows.find((r) => r.error !== undefined)!;
+        strictEqual(errorRow.key, "fake");
+        strictEqual(errorRow.id, undefined); // error rows carry neither id...
+        strictEqual(errorRow.value, undefined); // ...nor value
+
+        const deletedRow = result.rows.find((r) => r.id === "gone")!;
+        strictEqual(deletedRow.value!.deleted, true); // tombstone value carries deleted:true
+      }),
+    ).pipe(Effect.provide(TestLayer)),
+  );
+
+  it.effect("list honours a numeric limit query param", () =>
+    withTempDb((name) =>
+      Effect.gen(function* () {
+        const doc = yield* Document;
+        yield* doc.bulk(name, [{ _id: "n1" }, { _id: "n2" }, { _id: "n3" }]);
+        // limit is a number; the URL serializer only accepts strings, so the layer must
+        // coerce it. Without that coercion this call throws "Expected StringTree".
+        const result = yield* doc.list(name, { limit: 1 });
+        strictEqual(result.rows.length, 1);
       }),
     ).pipe(Effect.provide(TestLayer)),
   );

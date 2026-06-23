@@ -189,11 +189,13 @@ describe("Database", () => {
     ).pipe(Effect.provide(TestLayer)),
   );
 
-  it.effect("viewCleanup removes stale view indexes", () =>
+  it.effect("viewCleanup removes stale view indexes and returns ok", () =>
     withTempDb((name) =>
       Effect.gen(function* () {
         const db = yield* Database;
-        yield* db.viewCleanup(name);
+        // CouchDB answers {ok:true}; the schema must decode it, not discard the body as void.
+        const result = yield* db.viewCleanup(name);
+        strictEqual(result.ok, true);
       }),
     ).pipe(Effect.provide(TestLayer)),
   );
@@ -383,6 +385,21 @@ describe("Database", () => {
         const result = yield* db.changes(name);
         const deleted = result.results.find((r) => r.id === "doomed" && r.deleted === true);
         strictEqual(deleted !== undefined, true);
+      }),
+    ).pipe(Effect.provide(TestLayer)),
+  );
+
+  it.effect("changes with include_docs attaches the document body", () =>
+    withTempDb((name) =>
+      Effect.gen(function* () {
+        const doc = yield* Document;
+        yield* doc.put(name, "withdoc", { a: 1 });
+
+        const db = yield* Database;
+        // include_docs=true adds a `doc` field per result row; absent otherwise.
+        const result = yield* db.changes(name, { include_docs: true });
+        const row = result.results.find((r) => r.id === "withdoc")!;
+        strictEqual((row.doc as { a: number }).a, 1);
       }),
     ).pipe(Effect.provide(TestLayer)),
   );

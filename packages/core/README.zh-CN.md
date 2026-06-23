@@ -237,8 +237,8 @@ const program = Effect.gen(function* () {
 调用 `.in(db)` 可以获得无需在每次调用时传入 `db` 的访问器：
 
 ```typescript
-const todos = (yield* SchemaDocument.make(TodoFields)).in("mydb");
-yield* todos.put("todo-1", { title: "Buy milk", done: false });
+const todos = (yield * SchemaDocument.make(TodoFields)).in("mydb");
+yield * todos.put("todo-1", { title: "Buy milk", done: false });
 ```
 
 ## SchemaLocalDocument

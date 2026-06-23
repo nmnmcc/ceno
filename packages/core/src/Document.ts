@@ -17,7 +17,8 @@ import type {
 export const DocumentInsertResponse = Schema.Struct({
   id: Schema.String,
   ok: Schema.Boolean,
-  rev: Schema.String,
+  // Absent in batch mode (?batch=ok → 202 Accepted), where the write is queued and not yet assigned a rev.
+  rev: Schema.optional(Schema.String),
 });
 export type DocumentInsertResponse = typeof DocumentInsertResponse.Type;
 
@@ -25,7 +26,8 @@ export type DocumentInsertResponse = typeof DocumentInsertResponse.Type;
 export const DocumentDestroyResponse = Schema.Struct({
   id: Schema.String,
   ok: Schema.Boolean,
-  rev: Schema.String,
+  // Absent in batch mode (?batch=ok → 202 Accepted).
+  rev: Schema.optional(Schema.String),
 });
 export type DocumentDestroyResponse = typeof DocumentDestroyResponse.Type;
 
@@ -41,9 +43,10 @@ export type DocumentBulkResponse = typeof DocumentBulkResponse.Type;
 
 /** A single listed document, optionally including its body. */
 export const DocumentResponseRow = Schema.Struct({
-  id: Schema.String,
+  // id and value are absent on error rows (e.g. a missing key passed to `_all_docs?keys=[...]`, which yields `{key, error}`).
+  id: Schema.optional(Schema.String),
   key: Schema.String,
-  value: Schema.Struct({ rev: Schema.String }),
+  value: Schema.optional(Schema.Struct({ rev: Schema.String, deleted: Schema.optional(Schema.Boolean) })),
   error: Schema.optional(Schema.String),
   doc: Schema.optional(Schema.Unknown),
 });
@@ -85,7 +88,7 @@ const MangoExecutionStats = Schema.Struct({
 /** Mango query response. */
 export const MangoResponse = Schema.Struct({
   docs: Schema.Array(Schema.Unknown),
-  bookmark: Schema.optional(Schema.String),
+  bookmark: Schema.String,
   warning: Schema.optional(Schema.String),
   execution_stats: Schema.optional(MangoExecutionStats),
 });
@@ -160,64 +163,76 @@ export interface DocumentInsertParams {
 
 /** Options for creating or updating a document at a specific ID. */
 export interface DocumentPutParams {
-  readonly rev?: string;
+  // `| undefined` so a possibly-omitted rev from a prior write response (e.g. batch mode) flows in without narrowing.
+  readonly rev?: string | undefined;
   readonly batch?: "ok";
   readonly new_edits?: boolean;
 }
 
-/** Options for retrieving a document. */
-export interface DocumentGetParams {
-  readonly attachments?: boolean;
-  readonly att_encoding_info?: boolean;
-  readonly atts_since?: readonly unknown[];
-  readonly conflicts?: boolean;
-  readonly deleted_conflicts?: boolean;
-  readonly latest?: boolean;
-  readonly local_seq?: boolean;
-  readonly meta?: boolean;
-  readonly open_revs?: readonly unknown[];
-  readonly rev?: string;
-  readonly revs?: boolean;
-  readonly revs_info?: boolean;
-}
+/**
+ * Options for retrieving a document, as a Schema so the HttpApi query encoder
+ * coerces each value to the right wire string: booleans → "true"/"false",
+ * `atts_since`/`open_revs` → JSON. See https://docs.couchdb.org/en/stable/api/document/common.html
+ */
+export const DocumentGetParams = Schema.Struct({
+  attachments: Schema.optional(Schema.Boolean),
+  att_encoding_info: Schema.optional(Schema.Boolean),
+  atts_since: Schema.optional(Schema.UnknownFromJsonString),
+  conflicts: Schema.optional(Schema.Boolean),
+  deleted_conflicts: Schema.optional(Schema.Boolean),
+  latest: Schema.optional(Schema.Boolean),
+  local_seq: Schema.optional(Schema.Boolean),
+  meta: Schema.optional(Schema.Boolean),
+  open_revs: Schema.optional(Schema.UnknownFromJsonString),
+  rev: Schema.optional(Schema.String),
+  revs: Schema.optional(Schema.Boolean),
+  revs_info: Schema.optional(Schema.Boolean),
+});
+export type DocumentGetParams = typeof DocumentGetParams.Type;
 
-/** Options for listing documents. */
-export interface DocumentListParams {
-  readonly conflicts?: boolean;
-  readonly descending?: boolean;
-  readonly endkey?: string;
-  readonly end_key?: string;
-  readonly end_key_doc_id?: string;
-  readonly include_docs?: boolean;
-  readonly inclusive_end?: boolean;
-  readonly key?: string;
-  readonly keys?: string | readonly string[];
-  readonly limit?: number;
-  readonly skip?: number;
-  readonly stale?: string;
-  readonly startkey?: string;
-  readonly start_key?: string;
-  readonly start_key_doc_id?: string;
-  readonly update_seq?: boolean;
-}
+/**
+ * Options for `_all_docs`, as a Schema so the query encoder stringifies each
+ * value: booleans → "true"/"false", numbers → decimal, and the JSON key
+ * params (`key`/`keys`/`startkey`/`endkey`) → JSON via `UnknownFromJsonString`
+ * (pass the native value, not a pre-stringified string).
+ * See https://docs.couchdb.org/en/stable/api/database/bulk-api.html
+ */
+export const DocumentListParams = Schema.Struct({
+  conflicts: Schema.optional(Schema.Boolean),
+  descending: Schema.optional(Schema.Boolean),
+  endkey: Schema.optional(Schema.UnknownFromJsonString),
+  end_key: Schema.optional(Schema.UnknownFromJsonString),
+  end_key_doc_id: Schema.optional(Schema.String),
+  include_docs: Schema.optional(Schema.Boolean),
+  inclusive_end: Schema.optional(Schema.Boolean),
+  key: Schema.optional(Schema.UnknownFromJsonString),
+  keys: Schema.optional(Schema.UnknownFromJsonString),
+  limit: Schema.optional(Schema.Number),
+  skip: Schema.optional(Schema.Number),
+  startkey: Schema.optional(Schema.UnknownFromJsonString),
+  start_key: Schema.optional(Schema.UnknownFromJsonString),
+  start_key_doc_id: Schema.optional(Schema.String),
+  update_seq: Schema.optional(Schema.Boolean),
+});
+export type DocumentListParams = typeof DocumentListParams.Type;
 
-/** Options for fetching documents by an explicit set of keys. */
-export interface DocumentFetchParams {
-  readonly conflicts?: boolean;
-  readonly descending?: boolean;
-  readonly end_key?: string;
-  readonly end_key_doc_id?: string;
-  readonly include_docs?: boolean;
-  readonly inclusive_end?: boolean;
-  readonly key?: string;
-  readonly keys?: string | readonly string[];
-  readonly limit?: number;
-  readonly skip?: number;
-  readonly stale?: string;
-  readonly start_key?: string;
-  readonly start_key_doc_id?: string;
-  readonly update_seq?: boolean;
-}
+/** Options for fetching documents by an explicit set of keys; same wire-coercion rules as {@link DocumentListParams}. */
+export const DocumentFetchParams = Schema.Struct({
+  conflicts: Schema.optional(Schema.Boolean),
+  descending: Schema.optional(Schema.Boolean),
+  end_key: Schema.optional(Schema.UnknownFromJsonString),
+  end_key_doc_id: Schema.optional(Schema.String),
+  include_docs: Schema.optional(Schema.Boolean),
+  inclusive_end: Schema.optional(Schema.Boolean),
+  key: Schema.optional(Schema.UnknownFromJsonString),
+  keys: Schema.optional(Schema.UnknownFromJsonString),
+  limit: Schema.optional(Schema.Number),
+  skip: Schema.optional(Schema.Number),
+  start_key: Schema.optional(Schema.UnknownFromJsonString),
+  start_key_doc_id: Schema.optional(Schema.String),
+  update_seq: Schema.optional(Schema.Boolean),
+});
+export type DocumentFetchParams = typeof DocumentFetchParams.Type;
 
 /** Mango selector. */
 export type MangoSelector = {
@@ -300,7 +315,10 @@ export class Document extends Context.Service<Document, Document.Document>()("@c
 export namespace Document {
   /** Document operations narrowed to a single database, created by calling `in` on the {@link Document} service. */
   export type DatabaseDocument = {
-    readonly [K in Exclude<keyof Document, "in" | "partitioned">]: Document[K] extends (db: string, ...rest: infer R) => infer Ret
+    readonly [K in Exclude<keyof Document, "in" | "partitioned">]: Document[K] extends (
+      db: string,
+      ...rest: infer R
+    ) => infer Ret
       ? (...args: R) => Ret
       : Document[K];
   } & {
@@ -331,7 +349,10 @@ export namespace Document {
 
   /** Document operations narrowed to a single partition within a single database, created by calling `partitioned` on a {@link DatabaseDocument}. */
   export type DatabasePartitionedDocument = {
-    readonly [K in keyof PartitionedDocument]: PartitionedDocument[K] extends (db: string, ...rest: infer R) => infer Ret
+    readonly [K in keyof PartitionedDocument]: PartitionedDocument[K] extends (
+      db: string,
+      ...rest: infer R
+    ) => infer Ret
       ? (...args: R) => Ret
       : PartitionedDocument[K];
   };
@@ -373,7 +394,7 @@ export namespace Document {
     destroy(
       db: string,
       docid: string,
-      rev: string,
+      rev: string | undefined,
       options?: DocumentDestroyParams,
     ): Effect.Effect<
       DocumentDestroyResponse,
@@ -462,7 +483,7 @@ export namespace Document {
       docid: string,
       attname: string,
       data: unknown,
-      options?: { readonly rev?: string },
+      options?: { readonly rev?: string | undefined },
     ): Effect.Effect<
       DocumentInsertResponse,
       CenoBadRequest | CenoUnauthorized | CenoForbidden | CenoNotFound | CenoConflict | TransportError
@@ -488,7 +509,7 @@ export namespace Document {
       db: string,
       docid: string,
       attname: string,
-      rev: string,
+      rev: string | undefined,
       options?: AttachmentDestroyParams,
     ): Effect.Effect<
       DocumentDestroyResponse,
