@@ -56,51 +56,57 @@ describe("toSchema", () => {
 describe("migrate", () => {
   it.effect("decodes data matching the initial version directly", () =>
     Effect.gen(function* () {
-      const result = yield* migrate({ name: "Alice" }, V1);
-      strictEqual(result.name, "Alice");
+      const { value, migrated } = yield* migrate({ name: "Alice" }, V1);
+      strictEqual(value.name, "Alice");
+      strictEqual(migrated, false);
     }),
   );
 
   it.effect("decodes data matching the latest version in a chain", () =>
     Effect.gen(function* () {
-      const result = yield* migrate({ name: "Alice", age: 30 }, V2);
-      strictEqual(result.name, "Alice");
-      strictEqual(result.age, 30);
+      const { value, migrated } = yield* migrate({ name: "Alice", age: 30 }, V2);
+      strictEqual(value.name, "Alice");
+      strictEqual(value.age, 30);
+      strictEqual(migrated, false);
     }),
   );
 
   it.effect("migrates data from v1 through v2 when v2 decode fails", () =>
     Effect.gen(function* () {
-      const result = yield* migrate({ name: "Alice" }, V2);
-      strictEqual(result.name, "Alice");
-      strictEqual(result.age, 0);
+      const { value, migrated } = yield* migrate({ name: "Alice" }, V2);
+      strictEqual(value.name, "Alice");
+      strictEqual(value.age, 0);
+      strictEqual(migrated, true);
     }),
   );
 
   it.effect("migrates data from v1 through v2 and v3", () =>
     Effect.gen(function* () {
-      const result = yield* migrate({ name: "Alice" }, V3);
-      strictEqual(result.name, "Alice");
-      strictEqual(result.age, 0);
-      strictEqual(result.active, true);
+      const { value, migrated } = yield* migrate({ name: "Alice" }, V3);
+      strictEqual(value.name, "Alice");
+      strictEqual(value.age, 0);
+      strictEqual(value.active, true);
+      strictEqual(migrated, true);
     }),
   );
 
   it.effect("migrates data from v2 through v3", () =>
     Effect.gen(function* () {
-      const result = yield* migrate({ name: "Alice", age: 25 }, V3);
-      strictEqual(result.name, "Alice");
-      strictEqual(result.age, 25);
-      strictEqual(result.active, true);
+      const { value, migrated } = yield* migrate({ name: "Alice", age: 25 }, V3);
+      strictEqual(value.name, "Alice");
+      strictEqual(value.age, 25);
+      strictEqual(value.active, true);
+      strictEqual(migrated, true);
     }),
   );
 
   it.effect("decodes data matching v3 directly without migration", () =>
     Effect.gen(function* () {
-      const result = yield* migrate({ name: "Alice", age: 25, active: false }, V3);
-      strictEqual(result.name, "Alice");
-      strictEqual(result.age, 25);
-      strictEqual(result.active, false);
+      const { value, migrated } = yield* migrate({ name: "Alice", age: 25, active: false }, V3);
+      strictEqual(value.name, "Alice");
+      strictEqual(value.age, 25);
+      strictEqual(value.active, false);
+      strictEqual(migrated, false);
     }),
   );
 
@@ -130,9 +136,9 @@ describe("migrate", () => {
 
   it.effect("strips extra properties during decode", () =>
     Effect.gen(function* () {
-      const result = yield* migrate({ name: "Alice", extra: "ignored" }, V1);
-      strictEqual(result.name, "Alice");
-      strictEqual("extra" in result, false);
+      const { value } = yield* migrate({ name: "Alice", extra: "ignored" }, V1);
+      strictEqual(value.name, "Alice");
+      strictEqual("extra" in value, false);
     }),
   );
 
@@ -143,8 +149,9 @@ describe("migrate", () => {
         to: { fullName: Schema.String },
         migrate: (v1) => ({ fullName: `Dr. ${v1.name}` }),
       });
-      const result = yield* migrate({ name: "Smith" }, VersionWithTransform);
-      strictEqual(result.fullName, "Dr. Smith");
+      const { value, migrated } = yield* migrate({ name: "Smith" }, VersionWithTransform);
+      strictEqual(value.fullName, "Dr. Smith");
+      strictEqual(migrated, true);
     }),
   );
 });

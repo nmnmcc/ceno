@@ -10,7 +10,7 @@ Features:
 
 - **Type-safe** — Every response, parameter, and error is statically typed via Effect schemas.
 - **Effect-native** — Built on `Effect.gen`, services, and layers. Compose with the full Effect ecosystem.
-- **Backend-agnostic** — Service contracts live in `@ceno/core`; `@ceno/couchdb` is one implementation. A future PouchDB backend would implement the same interfaces.
+- **Backend-agnostic** — Service contracts live in `@ceno/core`; `@ceno/couchdb` is one implementation. A future PouchDB backend can implement the same interfaces.
 - **Transport-agnostic** — No bundled `HttpClient`. You supply the transport layer (`FetchHttpClient`, `NodeHttpClient`, etc.).
 - **Errors you can catch** — CouchDB error codes map to tagged error classes (`CenoNotFound`, `CenoConflict`, …) for precise `catchTag` handling.
 

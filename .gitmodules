@@ -5,3 +5,6 @@
 [submodule "references/couchdb-nano"]
 	path = references/couchdb-nano
 	url = https://github.com/apache/couchdb-nano
+[submodule "references/pouchdb"]
+	path = references/pouchdb
+	url = https://github.com/pouchdb/pouchdb.git

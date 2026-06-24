@@ -39,7 +39,7 @@
 
 ceno is a type-safe CouchDB client built on Effect `HttpApi` (`effect/unstable/httpapi`). Client methods are generated from declarative API definitions; errors are decoded by `HttpApiClient` based on HTTP status codes.
 
-Service contracts are backend-agnostic and live in `@ceno/core`; each backend provides a layer implementation in its own package. `@ceno/couchdb` is the CouchDB-over-HTTP implementation — it is "just one implementation of the `@ceno/core` services layer". A future PouchDB backend would be another implementation of the same `@ceno/core` services.
+Service contracts are backend-agnostic and live in `@ceno/core`; each backend provides a layer implementation in its own package. `@ceno/couchdb` is the CouchDB-over-HTTP implementation. A future `@ceno/pouchdb` package can implement the same `@ceno/core` service contracts.
 
 ### Monorepo layout
 

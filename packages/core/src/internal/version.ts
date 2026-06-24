@@ -13,23 +13,26 @@ const MigrateErrorContext = Context.Reference<readonly Schema.SchemaError[]>("@c
   defaultValue: () => [],
 });
 
-/** @internal Decodes unknown data through a version chain, trying the newest schema first and falling back through migrations. */
-export const migrate = (data: unknown, version: any): Effect.Effect<any, MigrateError, any> =>
+/** @internal Decodes unknown data through a version chain, trying the newest schema first and falling back through migrations. Returns `migrated: true` when the data required a migration step (was not in the latest version's shape). */
+export const migrate = (
+  data: unknown,
+  version: any,
+): Effect.Effect<{ readonly value: any; readonly migrated: boolean }, MigrateError, any> =>
   Effect.gen(function* () {
     if (!("migrate" in version)) {
       const exit = yield* Schema.decodeUnknownEffect(Schema.Struct(version))(data).pipe(Effect.exit);
-      if (Exit.isSuccess(exit)) return exit.value;
+      if (Exit.isSuccess(exit)) return { value: exit.value, migrated: false };
       const accumulated = yield* MigrateErrorContext;
       const errors = exit.cause.reasons.filter(Cause.isFailReason).map((r) => r.error);
       return yield* new MigrateError({ errors: [...accumulated, ...errors] });
     }
     const exit = yield* Schema.decodeUnknownEffect(Schema.Struct(version.to))(data).pipe(Effect.exit);
-    if (Exit.isSuccess(exit)) return exit.value;
+    if (Exit.isSuccess(exit)) return { value: exit.value, migrated: false };
     const accumulated = yield* MigrateErrorContext;
     const errors = exit.cause.reasons.filter(Cause.isFailReason).map((r) => r.error);
     return yield* migrate(data, version.from).pipe(
       Effect.provideService(MigrateErrorContext, [...accumulated, ...errors]),
-      Effect.map(version.migrate),
+      Effect.map((prev: any) => ({ value: version.migrate(prev.value), migrated: true })),
     );
   });
 

@@ -213,31 +213,50 @@ export interface SchemaDatabaseDocument<F extends Schema.Struct.Fields> {
   >;
 }
 
+/** Options for {@link make}. */
+export interface SchemaDocumentOptions {
+  /** When `true` (the default), a `get` that triggers a version migration will write the migrated document back to the database so subsequent reads hit the latest schema directly. The write-back is best-effort: failures (conflicts, network errors) are silently ignored and the migrated value is still returned. */
+  readonly write?: boolean | undefined;
+}
+
 /** Creates schema-aware document operations from a version chain. Resolves {@link Document} from the Effect context. */
 export const make: <From, F extends Schema.Struct.Fields>(
   version: Version<From, F>,
-) => Effect.Effect<SchemaDocument<F>, never, Document> = (version: any): Effect.Effect<any, never, Document> =>
+  options?: SchemaDocumentOptions,
+) => Effect.Effect<SchemaDocument<F>, never, Document> = (
+  version: any,
+  { write = true }: SchemaDocumentOptions = {},
+): Effect.Effect<any, never, Document> =>
   Effect.gen(function* () {
     const document = yield* Document;
     const encode = Schema.encodeEffect(toSchema(version));
 
+    const migrateAll = (docs: readonly unknown[]) =>
+      Effect.forEach(docs, (doc) => Effect.map(migrate(doc, version), (r) => r.value));
+
     const partitionedFind = (db: string, partition: string, query: MangoQuery) =>
       Effect.flatMap(document.partitionedFind(db, partition, query), (response) =>
-        Effect.map(Effect.all(response.docs.map((doc) => migrate(doc, version))), (docs) => ({ ...response, docs })),
+        Effect.map(migrateAll(response.docs), (docs) => ({ ...response, docs })),
       );
 
     const methods: Omit<SchemaDocument<Schema.Struct.Fields>, "in" | "partitioned"> = {
-      get: (d, docid, options) =>
-        Effect.flatMap(document.get(d, docid, options), (raw) => {
-          const { _id, _rev } = raw as { _id: string; _rev: string };
-          return Effect.map(migrate(raw, version), (data) => ({ ...data, _id, _rev }));
+      get: (d, docid, opts) =>
+        Effect.gen(function* () {
+          const raw = (yield* document.get(d, docid, opts)) as { _id: string; _rev: string };
+          const { _id, _rev } = raw;
+          const { value, migrated } = yield* migrate(raw, version);
+          if (migrated && write)
+            yield* encode(value).pipe(
+              Effect.flatMap((encoded) => document.put(d, docid, encoded, { rev: _rev })),
+              Effect.forkDetach,
+            );
+          return { ...value, _id, _rev };
         }),
-      insert: (d, body, options) => Effect.flatMap(encode(body), (encoded) => document.insert(d, encoded, options)),
-      put: (d, docid, body, options) =>
-        Effect.flatMap(encode(body), (encoded) => document.put(d, docid, encoded, options)),
+      insert: (d, body, opts) => Effect.flatMap(encode(body), (encoded) => document.insert(d, encoded, opts)),
+      put: (d, docid, body, opts) => Effect.flatMap(encode(body), (encoded) => document.put(d, docid, encoded, opts)),
       find: (d, query) =>
         Effect.flatMap(document.find(d, query), (response) =>
-          Effect.map(Effect.all(response.docs.map((doc) => migrate(doc, version))), (docs) => ({ ...response, docs })),
+          Effect.map(migrateAll(response.docs), (docs) => ({ ...response, docs })),
         ),
       bulk: (d, docs) =>
         Effect.flatMap(Effect.all(docs.map((doc) => encode(doc))), (encoded) => document.bulk(d, encoded)),
@@ -253,9 +272,9 @@ export const make: <From, F extends Schema.Struct.Fields>(
           partitioned: (partition): SchemaDatabasePartitionedDocument<Schema.Struct.Fields> => ({
             find: (query) => partitionedFind(db, partition, query),
           }),
-          get: (docid, options) => methods.get(db, docid, options),
-          insert: (body, options) => methods.insert(db, body, options),
-          put: (docid, body, options) => methods.put(db, docid, body, options),
+          get: (docid, opts) => methods.get(db, docid, opts),
+          insert: (body, opts) => methods.insert(db, body, opts),
+          put: (docid, body, opts) => methods.put(db, docid, body, opts),
           find: (query) => methods.find(db, query),
           bulk: (docs) => methods.bulk(db, docs),
         }) satisfies SchemaDatabaseDocument<Schema.Struct.Fields>,

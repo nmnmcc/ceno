@@ -76,11 +76,19 @@ export interface SchemaDatabaseLocalDocument<F extends Schema.Struct.Fields> {
   >;
 }
 
+/** Options for {@link make}. */
+export interface SchemaLocalDocumentOptions {
+  /** When `true` (the default), a `get` that triggers a version migration will write the migrated document back to the database so subsequent reads hit the latest schema directly. The write-back is best-effort: failures are silently ignored. */
+  readonly write?: boolean | undefined;
+}
+
 /** Creates schema-aware local document operations from a version chain. Resolves {@link LocalDocument} from the Effect context. */
 export const make: <From, F extends Schema.Struct.Fields>(
   version: Version<From, F>,
+  options?: SchemaLocalDocumentOptions,
 ) => Effect.Effect<SchemaLocalDocument<F>, never, LocalDocument> = (
   version: any,
+  { write = true }: SchemaLocalDocumentOptions = {},
 ): Effect.Effect<any, never, LocalDocument> =>
   Effect.gen(function* () {
     const local = yield* LocalDocument;
@@ -88,12 +96,19 @@ export const make: <From, F extends Schema.Struct.Fields>(
 
     const methods: Omit<SchemaLocalDocument<Schema.Struct.Fields>, "in"> = {
       get: (d, docid) =>
-        Effect.flatMap(local.get(d, docid), (raw) => {
-          const { _id, _rev } = raw as { _id: string; _rev: string };
-          return Effect.map(migrate(raw, version), (data) => ({ ...data, _id, _rev }));
+        Effect.gen(function* () {
+          const raw = (yield* local.get(d, docid)) as { _id: string; _rev: string };
+          const { _id, _rev } = raw;
+          const { value, migrated } = yield* migrate(raw, version);
+          if (migrated && write)
+            yield* encode(value).pipe(
+              Effect.flatMap((encoded) => local.insert(d, docid, encoded, { rev: _rev })),
+              Effect.forkDetach,
+            );
+          return { ...value, _id, _rev };
         }),
-      insert: (d, docid, body, options) =>
-        Effect.flatMap(encode(body), (encoded) => local.insert(d, docid, encoded, options)),
+      insert: (d, docid, body, opts) =>
+        Effect.flatMap(encode(body), (encoded) => local.insert(d, docid, encoded, opts)),
     };
 
     return {
@@ -101,7 +116,7 @@ export const make: <From, F extends Schema.Struct.Fields>(
       in: (db: string) =>
         ({
           get: (docid) => methods.get(db, docid),
-          insert: (docid, body, options) => methods.insert(db, docid, body, options),
+          insert: (docid, body, opts) => methods.insert(db, docid, body, opts),
         }) satisfies SchemaDatabaseLocalDocument<Schema.Struct.Fields>,
     };
   });
